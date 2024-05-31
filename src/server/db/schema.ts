@@ -8,6 +8,7 @@ import {
   serial,
   timestamp,
   varchar,
+  text,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -37,14 +38,31 @@ export const posts = createTable(
 export const lists = createTable(
   "lists",
   {
-    id: serial("id").primaryKey(),
+    id: varchar("id", {length: 128}).primaryKey(),
+    userId: varchar("user_id", { length: 128 }).notNull(),
     name: varchar("name", { length: 256 }),
-    desc: varchar("desc", { length: 256 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
   (self) => ({
-    listIndex: index("list_index").on(self.name),
+    listsByUserIdIndex: index("lists_by_user_id_index").on(self.userId),
+  })
+);
+
+export const listItems = createTable(
+  "listItems",
+  {
+    id: varchar("id", {length: 128}).primaryKey(),
+    listId: varchar("listId", {length: 128}),
+    name: varchar("name", { length: 256 }),
+    content: text("content"),
+    url: varchar("url", { length: 1024 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (self) => ({
+    listItemsByListId: index("list_items_by_list_id_index").on(self.listId),
   })
 );

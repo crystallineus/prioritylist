@@ -1,0 +1,1 @@
+ALTER TABLE "prioritylist-prototype_lists" ALTER COLUMN "user_id" SET NOT NULL;
