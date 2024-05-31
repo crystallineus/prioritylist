@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/
 import { lists } from "~/server/db/schema";
 import { v4 as uuid } from 'uuid';
 import { currentUser } from '@clerk/nextjs/server';
+import { eq } from "drizzle-orm";
 
 export const listRouter = createTRPCRouter({
   hello: publicProcedure
@@ -30,9 +31,11 @@ export const listRouter = createTRPCRouter({
       });
     }),
 
-  list: protectedProcedure.query(({ ctx }) => {
-    return ctx.db.query.lists.findMany({
-      orderBy: (lists, { desc }) => [desc(lists.createdAt)],
-    });
+  list: publicProcedure.query(({ ctx }) => {
+    if (ctx.auth.userId === null) {
+      return [];
+    }
+
+    return ctx.db.select().from(lists).where(eq(lists.userId, ctx.auth.userId)).orderBy(lists.createdAt);
   }),
 });
