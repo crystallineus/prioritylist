@@ -20,14 +20,15 @@ export const listRouter = createTRPCRouter({
     }),
 
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1) }))
+    .input(z.object({ name: z.string().min(1), note: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.insert(lists).values({
         // TODO: why is the type not being recognized?
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
         id: uuid(),
         userId: ctx.auth.userId,
-        name: `${input.name} by ${ctx.auth.userId}`,
+        name: `${input.name}`,
+        note: `${input.note}`
       });
     }),
 

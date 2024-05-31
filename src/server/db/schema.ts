@@ -44,6 +44,7 @@ export const lists = createTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    note: varchar("note", { length: 256 })
   },
   (self) => ({
     listsByUserIdIndex: index("lists_by_user_id_index").on(self.userId),

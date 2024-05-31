@@ -36,6 +36,20 @@
       "when": 1717128522106,
       "tag": "0004_modern_agent_zero",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1717131431226,
+      "tag": "0005_wise_impossible_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1717132466843,
+      "tag": "0006_wooden_thunderbolt",
+      "breakpoints": true
     }
   ]
 }

@@ -26,8 +26,7 @@ export default async function Home() {
             target="_blank"
           >
             <h3 className="text-2xl font-bold">{list.name}</h3>
-            <div className="text-lg">
-              Wow its a list
+            <div className="text-lg">{list.note}
             </div>
           </Link>
         )) : (

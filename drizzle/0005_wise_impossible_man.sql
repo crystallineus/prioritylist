@@ -1,0 +1,1 @@
+ALTER TABLE "prioritylist-prototype_listItems" ADD COLUMN "note" varchar(256);
