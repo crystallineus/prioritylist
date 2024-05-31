@@ -1,29 +1,33 @@
-# Create T3 App
+# PriorityList
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+## Tech stack
 
-## What's next? How do I make an app with this?
-
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
-
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
-
+- [T3 Stack](https://create.t3.gg/)
 - [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
 - [Drizzle](https://orm.drizzle.team)
 - [Tailwind CSS](https://tailwindcss.com)
 - [tRPC](https://trpc.io)
+- [Clerk](https://clerk.com/)
+- [Vercel](https://vercel.com/)
 
-## Learn More
+### Learning resources
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available)
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+## Running the project locally 
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+- [VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers)
 
-## How do I deploy this?
+## Deployment
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+Clerk
+- Create an application
+- Grab the keys for the environment variables: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
+
+Vercel
+- Create a postgres database instance
+    - Grab the keys for the environment variable: `DATABASE_URL`
+- Create a new project and import the github repo. Configure the relevant environment vars.
+
+Github actions
+- Add a github secret for the github actions workflows named `DATABASE_URL`. This should point to the vercel postgres database.
