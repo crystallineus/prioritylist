@@ -1,0 +1,1 @@
+ALTER TABLE "prioritylist-prototype_lists" DROP COLUMN IF EXISTS "updatedAt";

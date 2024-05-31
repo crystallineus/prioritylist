@@ -1,0 +1,1 @@
+ALTER TABLE "prioritylist-prototype_lists" ADD COLUMN "desc" varchar(256);

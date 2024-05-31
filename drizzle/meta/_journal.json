@@ -1,0 +1,27 @@
+{
+  "version": "6",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1717120909971,
+      "tag": "0000_lucky_proteus",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1717121564142,
+      "tag": "0001_legal_glorian",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1717121590074,
+      "tag": "0002_salty_famine",
+      "breakpoints": true
+    }
+  ]
+}

@@ -27,8 +27,24 @@ export const posts = createTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     updatedAt: timestamp("updatedAt", { withTimezone: true }),
+    description: varchar("description", { length: 512 }),
   },
-  (example) => ({
-    nameIndex: index("name_idx").on(example.name),
+  (self) => ({
+    nameIndex: index("name_idx").on(self.name),
+  })
+);
+
+export const lists = createTable(
+  "lists",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 256 }),
+    desc: varchar("desc", { length: 256 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (self) => ({
+    listIndex: index("list_index").on(self.name),
   })
 );
