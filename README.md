@@ -9,8 +9,9 @@
 - [tRPC](https://trpc.io)
 - [Clerk](https://clerk.com/)
 - [Vercel](https://vercel.com/)
+- [Github actions](https://docs.github.com/en/actions)
 
-### Learning resources
+## Learning resources
 
 - [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available)
 
