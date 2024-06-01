@@ -5,10 +5,10 @@ import { sql } from "drizzle-orm";
 import {
   index,
   pgTableCreator,
-  serial,
   timestamp,
   varchar,
   text,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -19,51 +19,32 @@ import {
  */
 export const createTable = pgTableCreator((name) => `prioritylist-prototype_${name}`);
 
-export const posts = createTable(
-  "post",
-  {
-    id: serial("id").primaryKey(),
-    name: varchar("name", { length: 256 }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }),
-    description: varchar("description", { length: 512 }),
-  },
-  (self) => ({
-    nameIndex: index("name_idx").on(self.name),
-  })
-);
-
-export const lists = createTable(
-  "lists",
+export const nodes = createTable(
+  "nodes",
   {
     id: varchar("id", {length: 128}).primaryKey(),
     userId: varchar("user_id", { length: 128 }).notNull(),
-    name: varchar("name", { length: 256 }),
+    childrenIds: varchar("children_ids", { length: 128}).array(),
+    completed: boolean("completed"),
+    name: varchar("name", { length: 256 }).notNull(),
+    note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    note: varchar("note", { length: 256 })
   },
-  (self) => ({
-    listsByUserIdIndex: index("lists_by_user_id_index").on(self.userId),
+  (table) => ({
+    nodesByUserIdIndex: index("nodes_by_user_id_index").on(table.userId),
   })
 );
 
-export const listItems = createTable(
-  "listItems",
+// Every user has a root node
+export const rootNodes = createTable(
+  "rootNodes",
   {
-    id: varchar("id", {length: 128}).primaryKey(),
-    listId: varchar("listId", {length: 128}),
-    name: varchar("name", { length: 256 }),
-    content: text("content"),
-    url: varchar("url", { length: 1024 }),
+    userId: varchar("user_id", { length: 128 }).primaryKey(),
+    nodeId: varchar("node_id", { length: 128}).notNull().unique(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-  },
-  (self) => ({
-    listItemsByListId: index("list_items_by_list_id_index").on(self.listId),
-  })
+  }
 );

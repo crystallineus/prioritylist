@@ -5,12 +5,16 @@ import { useState } from "react";
 
 import { api } from "~/trpc/react";
 
-export function CreateList() {
+type CreateNodeProps = {
+  parentId: string;
+}
+
+export function CreateNode({ parentId }: CreateNodeProps) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
 
-  const createList = api.list.create.useMutation({
+  const createNode = api.node.create.useMutation({
     onSuccess: () => {
       router.refresh();
       setName("");
@@ -22,7 +26,7 @@ export function CreateList() {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        createList.mutate({ name, note });
+        createNode.mutate({ name, note, parentId });
       }}
       className="flex flex-col gap-2"
     >
@@ -43,9 +47,9 @@ export function CreateList() {
       <button
         type="submit"
         className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
-        disabled={createList.isPending}
+        disabled={createNode.isPending}
       >
-        {createList.isPending ? "Creating..." : "Create list"}
+        {createNode.isPending ? "Creating..." : "Create Node"}
       </button>
     </form>
   );

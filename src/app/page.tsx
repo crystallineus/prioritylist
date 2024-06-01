@@ -1,11 +1,19 @@
-import Link from "next/link";
-
-import { CreateList } from "~/app/_components/create-post";
+import { CreateNode } from "~/app/_components/create-node";
 import { api } from "~/trpc/server";
+import { NodeList } from "~/app/_components/node-list";
 
 export default async function Home() {
-  const hello = await api.list.hello();
-  const lists = await api.list.list();
+  const hello = await api.node.hello();
+  let root = (await api.node.getRootNode())[0];
+  if (root === undefined) {
+    await api.node.createRootNode();
+    root = (await api.node.getRootNode())[0];
+  }
+  if (root === undefined) {
+    throw new Error(`Failed to create root node for user`);
+  }
+  const childrenIds = root.nodes.childrenIds ?? [];
+  const nodes = childrenIds.length === 0 ? [] : await api.node.listNodes({ ids: childrenIds });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
@@ -18,21 +26,8 @@ export default async function Home() {
             {hello ? hello.greeting : "Loading..."}
           </p>
         </div>
-        {lists.length > 0 ? lists.map(list => (
-          <Link
-            key={list.id}
-            className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-            href="https://create.t3.gg/en/usage/first-steps"
-            target="_blank"
-          >
-            <h3 className="text-2xl font-bold">{list.name}</h3>
-            <div className="text-lg">{list.note}
-            </div>
-          </Link>
-        )) : (
-          <p>You have no lists yet.</p>
-        )}
-        <CreateList />
+        <NodeList nodes={nodes} />
+        <CreateNode parentId={root.nodes.id} />
       </div>
     </main>
   );
