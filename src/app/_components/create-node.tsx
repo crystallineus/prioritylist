@@ -12,12 +12,14 @@ export function CreateNode({ parentId }: CreateNodeProps) {
   const utils = api.useUtils();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
+  const [idx, setIdx] = useState<number | "">(); ;
 
   const createNode = api.node.create.useMutation({
     async onSuccess() {
       await utils.node.listChildren.invalidate({ parentId });
       setName("");
       setNote("");
+      setIdx("");
     },
   });
 
@@ -25,7 +27,7 @@ export function CreateNode({ parentId }: CreateNodeProps) {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        createNode.mutate({ name, note, parentId });
+        createNode.mutate({ name, note, parentId, idx: idx === "" ? undefined : idx });
       }}
       className="flex flex-col gap-2"
     >
@@ -41,6 +43,13 @@ export function CreateNode({ parentId }: CreateNodeProps) {
         placeholder="Note"
         value={note}
         onChange={(e) => setNote(e.target.value)}
+        className="w-full rounded-full px-4 py-2 text-black"
+      />
+      <input
+        type="number"
+        placeholder="Priority"
+        value={idx}
+        onChange={(e) => setIdx(parseInt(e.target.value))}
         className="w-full rounded-full px-4 py-2 text-black"
       />
       <button

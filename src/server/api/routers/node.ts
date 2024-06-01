@@ -46,7 +46,7 @@ export const nodeRouter = createTRPCRouter({
     }),
 
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1), note: z.string(), parentId: z.string() }))
+    .input(z.object({ name: z.string().min(1), note: z.string(), parentId: z.string(), idx: z.number().min(0).optional() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.transaction(async (tx) => {
         // Insert the child
@@ -69,7 +69,11 @@ export const nodeRouter = createTRPCRouter({
         if (parent.childrenIds === null) {
           parent.childrenIds = [];
         }
-        parent.childrenIds.push(childId)
+        if (input.idx !== undefined) {
+          parent.childrenIds.splice(input.idx, 0, childId);
+        } else {
+          parent.childrenIds.push(childId);
+        }
         await tx.update(nodes).set({
           childrenIds: parent.childrenIds,
         }).where(eq(nodes.id, input.parentId));
