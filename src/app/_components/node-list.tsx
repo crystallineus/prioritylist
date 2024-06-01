@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Reorder, useDragControls } from "framer-motion"
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
-import { CreateNode } from "~/app/_components/create-node";
+import { CreateNode, CreateTestData } from "~/app/_components/create-node";
 
 type Node = RouterOutputs['node']['listChildren'][number];
 
@@ -59,7 +59,7 @@ export function NodeList({ parentId }: NodeListProps) {
   });
 
   const onReorder = (reordered: Node[]) => {
-    updateChildren.mutate({ parentId, childrenIds: reordered.map(c => c.id)})
+    updateChildren.mutate({ parentId, childrenIds: reordered.map(c => c.id) })
   }
   const orderedNodes = orderedNodesQuery.data ?? [];
   const { isLoading, isError, error } = orderedNodesQuery;
@@ -72,16 +72,18 @@ export function NodeList({ parentId }: NodeListProps) {
   }
   return (
     <div>
-    <Reorder.Group axis="y" values={orderedNodes} onReorder={onReorder}>
-      {
-        orderedNodes.length > 0 ? orderedNodes.map(node => (
-          <Item key={node.id} node={node} parentId={parentId} />
-        )) : (
-          <p>You have no lists yet.</p>
-        )
-      }
-    </Reorder.Group >
-    <CreateNode parentId={parentId} /></div>
+      <Reorder.Group axis="y" values={orderedNodes} onReorder={onReorder}>
+        {
+          orderedNodes.length > 0 ? orderedNodes.map(node => (
+            <Item key={node.id} node={node} parentId={parentId} />
+          )) : (
+            <p>You have no lists yet.</p>
+          )
+        }
+      </Reorder.Group >
+      <CreateNode parentId={parentId} />
+      <CreateTestData parentId={parentId} />
+    </div>
   )
 }
 
