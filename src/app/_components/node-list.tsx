@@ -75,7 +75,7 @@ export function NodeList({ parentId }: NodeListProps) {
     <Reorder.Group axis="y" values={orderedNodes} onReorder={onReorder}>
       {
         orderedNodes.length > 0 ? orderedNodes.map(node => (
-          <Item key={node.id} node={node} />
+          <Item key={node.id} node={node} parentId={parentId} />
         )) : (
           <p>You have no lists yet.</p>
         )
@@ -86,11 +86,22 @@ export function NodeList({ parentId }: NodeListProps) {
 }
 
 type ItemProps = {
-  node: Node,
+  node: Node;
+  parentId: string;
 }
 
-function Item({ node }: ItemProps) {
+function Item({ parentId, node }: ItemProps) {
   const controls = useDragControls();
+  const utils = api.useUtils();
+  const deleteMutation = api.node.delete.useMutation({
+    async onSuccess() {
+      await utils.node.listChildren.invalidate({ parentId });
+    },
+  });
+  const deleteNode = () => {
+    console.log("Calling deleteMutation with parentId: ", parentId, "id", node.id);
+    deleteMutation.mutate({ parentId, id: node.id });
+  }
 
   return (
     <Reorder.Item value={node} dragListener={false} dragControls={controls}>
@@ -101,6 +112,7 @@ function Item({ node }: ItemProps) {
           <h3 className="text-2xl font-bold">{node.name}</h3>
           <div className="text-lg">{node.note}</div>
         </Link>
+        <button onClick={() => deleteNode()}>Delete</button>
         <div style={{ touchAction: "none" }} onPointerDown={(e) => controls.start(e)}>Drag me</div>
       </div>
     </Reorder.Item>

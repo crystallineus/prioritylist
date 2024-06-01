@@ -19,14 +19,31 @@ export const nodeRouter = createTRPCRouter({
       };
     }),
 
-    get: protectedProcedure
-      .input(z.object({ id: z.string().min(1) }))
-      .query(({ input, ctx }) => {
-        return ctx.db.select().from(nodes)
-          .where(and(
-            eq(nodes.userId, ctx.auth.userId),
-            eq(nodes.id, input.id)))
-      }),
+  get: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(({ input, ctx }) => {
+      return ctx.db.select().from(nodes)
+        .where(and(
+          eq(nodes.userId, ctx.auth.userId),
+          eq(nodes.id, input.id)))
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ parentId: z.string().min(1), id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx.delete(nodes).where(
+          and(eq(nodes.id, input.id), eq(nodes.userId, ctx.auth.userId)));
+
+        // Remove the child from the parent
+        const parent = (await tx.select().from(nodes).where(eq(nodes.id, input.parentId)))[0];
+        if (parent === undefined) {
+          throw new Error(`Invalid parent ID: ${input.parentId}`)
+        }
+        const childrenIds = parent.childrenIds?.filter(childId => childId !== input.id);
+        await tx.update(nodes).set({ childrenIds }).where(eq(nodes.id, input.parentId));
+      })
+    }),
 
   create: protectedProcedure
     .input(z.object({ name: z.string().min(1), note: z.string(), parentId: z.string() }))
@@ -59,9 +76,11 @@ export const nodeRouter = createTRPCRouter({
       })
     }),
 
-    // TODO: this is not thread safe and may lose children if another client
-    // added children
-    updateChildren: protectedProcedure
+  /* TODO: there are several possible race conditions:
+  - delete and updateChildren: the parent's childrenIds can end up with a dangling reference to a child that no longer exists
+  - create and updateChildren: the parent's childrenIds can end up missing the newly created child, if updateChildren was called with stale data
+  */
+  updateChildren: protectedProcedure
     .input(z.object({ parentId: z.string().min(1), childrenIds: z.array(z.string().min(1).min(1)) }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.transaction(async (tx) => {
@@ -86,7 +105,7 @@ export const nodeRouter = createTRPCRouter({
           throw new Error(`Invalid parent ID: ${input.parentId}`)
         }
 
-        if (!parent.childrenIds) {
+        if (!parent.childrenIds || parent.childrenIds.length === 0) {
           return [];
         }
         const children = await ctx.db.select().from(nodes)
@@ -98,7 +117,7 @@ export const nodeRouter = createTRPCRouter({
         for (const child of children) {
           childrenDict[child.id] = child;
         }
-  
+
         const sorted = [];
         for (const id of parent.childrenIds) {
           const child = childrenDict[id];
@@ -109,7 +128,7 @@ export const nodeRouter = createTRPCRouter({
         }
         return sorted;
       })
-  }),
+    }),
 
   createRootNode: protectedProcedure
     .mutation(async ({ ctx }) => {
