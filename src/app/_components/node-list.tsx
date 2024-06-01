@@ -5,6 +5,8 @@ import { Reorder, useDragControls } from "framer-motion"
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
 import { CreateNode, CreateTestData } from "~/app/_components/create-node";
+import { Button, ButtonGroup } from "@nextui-org/button";
+import { Card, CardBody, CardHeader } from "@nextui-org/react";
 
 type Node = RouterOutputs['node']['listChildren'][number];
 
@@ -30,9 +32,6 @@ export function NodeList({ parentId }: NodeListProps) {
         for (const child of children) {
           childrenDict[child.id] = child;
         }
-        console.log("----")
-        console.log("prevOrder", children.map(c => c.id));
-        console.log("childrenDict", childrenDict);
 
         // Reorder the children
         const newData = [];
@@ -43,9 +42,6 @@ export function NodeList({ parentId }: NodeListProps) {
           }
           newData.push(child)
         }
-        console.log("vars.childrenIds", vars.childrenIds);
-        console.log("newOrder", newData.map(c => c.id));
-
         return newData;
       });
 
@@ -71,7 +67,11 @@ export function NodeList({ parentId }: NodeListProps) {
     return <div>Loading...</div>;
   }
   return (
-    <div>
+    <div className="grid md:grid-cols-2 gap-6">
+      <div>
+        <CreateNode parentId={parentId} />
+        <CreateTestData parentId={parentId} />
+      </div>
       <Reorder.Group axis="y" values={orderedNodes} onReorder={onReorder}>
         {
           orderedNodes.length > 0 ? orderedNodes.map(node => (
@@ -81,8 +81,6 @@ export function NodeList({ parentId }: NodeListProps) {
           )
         }
       </Reorder.Group >
-      <CreateNode parentId={parentId} />
-      <CreateTestData parentId={parentId} />
     </div>
   )
 }
@@ -101,22 +99,25 @@ function Item({ parentId, node }: ItemProps) {
     },
   });
   const deleteNode = () => {
-    console.log("Calling deleteMutation with parentId: ", parentId, "id", node.id);
     deleteMutation.mutate({ parentId, id: node.id });
   }
 
   return (
-    <Reorder.Item value={node} dragListener={false} dragControls={controls}>
-      <div
-        className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-      >
-        <Link href={`/node/${node.id}`}>
-          <h3 className="text-2xl font-bold">{node.name}</h3>
-          <div className="text-lg">{node.note}</div>
-        </Link>
-        <button onClick={() => deleteNode()}>Delete</button>
-        <div style={{ touchAction: "none" }} onPointerDown={(e) => controls.start(e)}>Drag me</div>
-      </div>
+    <Reorder.Item value={node} dragListener={false} dragControls={controls} className="mb-4">
+      <Card className="max-w-[400px]">
+        <CardHeader className="flex gap-3">
+          <Link href={`/node/${node.id}`}>
+            <h3 className="text-2xl font-bold">{node.name}</h3>
+            <div className="text-lg">{node.note}</div>
+          </Link>
+          <div style={{ touchAction: "none" }} onPointerDown={(e) => controls.start(e)}>Drag me</div>
+        </CardHeader>
+        <CardBody>
+          <Button onPress={() => deleteNode()}>
+            Delete
+          </Button>
+        </CardBody>
+      </Card>
     </Reorder.Item>
   )
 }

@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { NextUIProvider } from "@nextui-org/react";
 
 export const metadata = {
   title: "Create T3 App",
@@ -28,7 +29,11 @@ export default function RootLayout({
               <UserButton />
             </SignedIn>
           </header>
-          <TRPCReactProvider>{children}</TRPCReactProvider>
+          <NextUIProvider>
+            <TRPCReactProvider>
+              {children}
+            </TRPCReactProvider>
+          </NextUIProvider>
         </body>
       </html>
     </ClerkProvider>

@@ -72,7 +72,7 @@ export const nodeRouter = createTRPCRouter({
         if (input.idx !== undefined) {
           parent.childrenIds.splice(input.idx, 0, childId);
         } else {
-          parent.childrenIds.push(childId);
+          parent.childrenIds.unshift(childId); // By default add to the top
         }
         await tx.update(nodes).set({
           childrenIds: parent.childrenIds,

@@ -6,6 +6,7 @@
 - [Next.js](https://nextjs.org)
 - [Drizzle](https://orm.drizzle.team)
 - [Tailwind CSS](https://tailwindcss.com)
+- [NextUI](https://nextui.org/)
 - [tRPC](https://trpc.io)
 - [Clerk](https://clerk.com/)
 - [Vercel](https://vercel.com/)

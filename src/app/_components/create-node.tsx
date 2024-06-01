@@ -65,7 +65,7 @@ export function CreateNode({ parentId }: CreateNodeProps) {
 
 export function CreateTestData({ parentId }: CreateNodeProps) {
   const utils = api.useUtils();
-  const [num, setNum] = useState<number>(20);
+  const [num, setNum] = useState<number>(10);
 
   const createTestData = api.node.create.useMutation({
     async onSuccess() {
