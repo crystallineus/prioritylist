@@ -20,7 +20,7 @@ import {
 export const createTable = pgTableCreator((name) => `prioritylist-prototype_${name}`);
 
 export const nodes = createTable(
-  "nodes",
+  "node",
   {
     id: varchar("id", {length: 128}).primaryKey(),
     userId: varchar("user_id", { length: 128 }).notNull(),
