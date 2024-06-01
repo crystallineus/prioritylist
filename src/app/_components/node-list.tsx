@@ -46,7 +46,7 @@ function Item({ node }: ItemProps) {
           <h3 className="text-2xl font-bold">{node.name}</h3>
           <div className="text-lg">{node.note}</div>
         </Link>
-        <div onPointerDown={(e) => controls.start(e)}>Drag me</div>
+        <div style={{ touchAction: "none" }} onPointerDown={(e) => controls.start(e)}>Drag me</div>
       </div>
     </Reorder.Item>
   )
