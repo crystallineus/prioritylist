@@ -17,6 +17,7 @@
 
 ## Running the project locally 
 
+- [Install Docker](https://docs.docker.com/get-docker/)
 - [VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers)
 
 ## Deployment
