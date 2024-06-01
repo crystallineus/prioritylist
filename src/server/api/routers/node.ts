@@ -50,11 +50,11 @@ export const nodeRouter = createTRPCRouter({
       })
     }),
 
-  listNodes: publicProcedure
+  listNodes: protectedProcedure
     .input(z.object({ ids: z.array(z.string().min(1)).min(1) }))
     .query(({ ctx, input }) => {
-    if (ctx.auth.userId === null) {
-      return [];
+    if (ctx.auth.userId === "") {
+      throw new Error("Missing userId");
     }
 
     return ctx.db.select().from(nodes)
@@ -67,8 +67,8 @@ export const nodeRouter = createTRPCRouter({
 
   createRootNode: protectedProcedure
     .mutation(async ({ ctx }) => {
-      if (ctx.auth.userId === null) {
-        return [];
+      if (ctx.auth.userId === "") {
+        throw new Error("Missing userId");
       }
       await ctx.db.transaction(async (tx) => {
         const nodeId = uuid();
@@ -84,9 +84,9 @@ export const nodeRouter = createTRPCRouter({
       })
     }),
 
-  getRootNode: publicProcedure.query(({ ctx }) => {
-    if (ctx.auth.userId === null) {
-      return [];
+  getRootNode: protectedProcedure.query(({ ctx }) => {
+    if (ctx.auth.userId === "") {
+      throw new Error("Missing userId");
     }
 
     return ctx.db.select().from(rootNodes)
