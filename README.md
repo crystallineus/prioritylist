@@ -17,8 +17,18 @@
 
 ## Running the project locally 
 
-- [Install Docker](https://docs.docker.com/get-docker/)
-- [VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers)
+Install [Docker](https://docs.docker.com/get-docker/).
+
+Setup [VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers).
+
+Create a local `.env` file. See `src/env.js` for which env vars are required.
+
+Run:
+```
+npm install
+npm run db:migrate
+npm run dev
+```
 
 ## Deployment
 
