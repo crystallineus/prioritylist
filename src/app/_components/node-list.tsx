@@ -15,7 +15,7 @@ type NodeListProps = {
 export function NodeList({ parentId }: NodeListProps) {
   const utils = api.useUtils();
   const orderedNodesQuery = api.node.listChildren.useQuery({ parentId });
-  const updateChildren = api.node.updateChildren.useMutation({
+  const updateChildren = api.node.reorderChildren.useMutation({
     async onMutate(vars) {
       // Cancel outgoing fetches (so they don't overwrite our optimistic update)
       await utils.node.listChildren.cancel();

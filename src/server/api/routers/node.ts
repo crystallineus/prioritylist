@@ -76,11 +76,9 @@ export const nodeRouter = createTRPCRouter({
       })
     }),
 
-  /* TODO: there are several possible race conditions:
-  - delete and updateChildren: the parent's childrenIds can end up with a dangling reference to a child that no longer exists
-  - create and updateChildren: the parent's childrenIds can end up missing the newly created child, if updateChildren was called with stale data
-  */
-  updateChildren: protectedProcedure
+  // reorderChildren re-sorts parent.childrenIds using input.childrenIds.
+  // This method NEVER adds new IDs or removes IDs from parent.childrenIds.
+  reorderChildren: protectedProcedure
     .input(z.object({ parentId: z.string().min(1), childrenIds: z.array(z.string().min(1).min(1)) }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.transaction(async (tx) => {
@@ -88,10 +86,29 @@ export const nodeRouter = createTRPCRouter({
         if (parent === undefined) {
           throw new Error(`Invalid parent ID: ${input.parentId}`)
         }
-        parent.childrenIds = input.childrenIds;
-        await tx.update(nodes).set({
-          childrenIds: parent.childrenIds,
-        }).where(eq(nodes.id, input.parentId));
+        const inputPriorities = new Map<string, number>();
+        input.childrenIds.forEach((id, index) => {
+          inputPriorities.set(id, index);
+        })
+        const srcPriorities = new Map<string, number>();
+        (parent.childrenIds ?? []).forEach((id, index) => {
+          srcPriorities.set(id, index);
+        })
+        const getSortPriority = (id: string): number => {
+          const inputPriority = inputPriorities.get(id);
+          if (inputPriority !== undefined) {
+            return inputPriority;
+          }
+          const srcPriority = srcPriorities.get(id);
+          if (srcPriority !== undefined) {
+            return srcPriority;
+          }
+          throw new Error(`Node ID is invalid: ${id}, parent ID: ${input.parentId}`);
+        }
+
+        const finalIds = parent.childrenIds ?? [];
+        finalIds.sort((a, b) => getSortPriority(a) - getSortPriority(b));
+        await tx.update(nodes).set({childrenIds: finalIds}).where(eq(nodes.id, input.parentId));
       })
     }),
 
