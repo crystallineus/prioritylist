@@ -34,13 +34,10 @@ async function RootNode() {
   if (root === undefined) {
     throw new Error(`Failed to create root node for user`);
   }
-  const childrenIds = root.node.childrenIds ?? [];
-  const nodes = childrenIds.length === 0 ? [] : await api.node.listNodes({ ids: childrenIds });
 
   return (
     <>
-      <NodeList nodes={nodes} />
-      <CreateNode parentId={root.node.id} />
+      <NodeList parentId={root.node.id} />
     </>
   )
 }

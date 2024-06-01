@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { api } from "~/trpc/react";
@@ -10,13 +9,13 @@ type CreateNodeProps = {
 }
 
 export function CreateNode({ parentId }: CreateNodeProps) {
-  const router = useRouter();
+  const utils = api.useUtils();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
 
   const createNode = api.node.create.useMutation({
-    onSuccess: () => {
-      router.refresh();
+    async onSuccess() {
+      await utils.node.listChildren.invalidate({ parentId });
       setName("");
       setNote("");
     },

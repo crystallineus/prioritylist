@@ -1,24 +1,77 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { Reorder, useDragControls } from "framer-motion"
 import { type RouterOutputs } from "~/trpc/react";
+import { api } from "~/trpc/react";
+import { CreateNode } from "~/app/_components/create-node";
 
-type Node = RouterOutputs['node']['listNodes'][number];
+type Node = RouterOutputs['node']['listChildren'][number];
 
 type NodeListProps = {
-  nodes: Node[],
+  parentId: string;
 }
 
-export function NodeList({ nodes }: NodeListProps) {
-  const [orderedNodes, setOrderedNodes] = useState(nodes);
+export function NodeList({ parentId }: NodeListProps) {
+  const utils = api.useUtils();
+  const orderedNodesQuery = api.node.listChildren.useQuery({ parentId });
+  const updateChildren = api.node.updateChildren.useMutation({
+    async onMutate(vars) {
+      // Cancel outgoing fetches (so they don't overwrite our optimistic update)
+      await utils.node.listChildren.cancel();
+
+      // Get the data from the queryCache
+      const prevData = utils.node.listChildren.getData();
+
+      // Optimistically update the data
+      utils.node.listChildren.setData({ parentId }, (prevData) => {
+        const children = prevData ?? [];
+        const childrenDict: Record<string, Node> = {};
+        for (const child of children) {
+          childrenDict[child.id] = child;
+        }
+        console.log("----")
+        console.log("prevOrder", children.map(c => c.id));
+        console.log("childrenDict", childrenDict);
+
+        // Reorder the children
+        const newData = [];
+        for (const id of vars.childrenIds) {
+          const child = childrenDict[id];
+          if (!child) {
+            throw new Error(`Missing child with id: ${id}`);
+          }
+          newData.push(child)
+        }
+        console.log("vars.childrenIds", vars.childrenIds);
+        console.log("newOrder", newData.map(c => c.id));
+
+        return newData;
+      });
+
+      // Return the previous data so we can revert if something goes wrong
+      return { prevData };
+    },
+    async onSettled() {
+      // Sync with server once mutation has settled
+      await utils.node.listChildren.invalidate();
+    },
+  });
 
   const onReorder = (reordered: Node[]) => {
-    setOrderedNodes(reordered);
+    updateChildren.mutate({ parentId, childrenIds: reordered.map(c => c.id)})
   }
+  const orderedNodes = orderedNodesQuery.data ?? [];
+  const { isLoading, isError, error } = orderedNodesQuery;
 
+  if (isError) {
+    return <div>Error occured: {JSON.stringify(error)}</div>
+  }
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
   return (
+    <div>
     <Reorder.Group axis="y" values={orderedNodes} onReorder={onReorder}>
       {
         orderedNodes.length > 0 ? orderedNodes.map(node => (
@@ -27,7 +80,9 @@ export function NodeList({ nodes }: NodeListProps) {
           <p>You have no lists yet.</p>
         )
       }
-    </Reorder.Group >)
+    </Reorder.Group >
+    <CreateNode parentId={parentId} /></div>
+  )
 }
 
 type ItemProps = {
@@ -42,7 +97,7 @@ function Item({ node }: ItemProps) {
       <div
         className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
       >
-        <Link href="https://google.com">
+        <Link href={`/node/${node.id}`}>
           <h3 className="text-2xl font-bold">{node.name}</h3>
           <div className="text-lg">{node.note}</div>
         </Link>
