@@ -12,7 +12,7 @@ export default async function Home() {
   if (root === undefined) {
     throw new Error(`Failed to create root node for user`);
   }
-  const childrenIds = root.nodes.childrenIds ?? [];
+  const childrenIds = root.node.childrenIds ?? [];
   const nodes = childrenIds.length === 0 ? [] : await api.node.listNodes({ ids: childrenIds });
 
   return (
@@ -27,7 +27,7 @@ export default async function Home() {
           </p>
         </div>
         <NodeList nodes={nodes} />
-        <CreateNode parentId={root.nodes.id} />
+        <CreateNode parentId={root.node.id} />
       </div>
     </main>
   );

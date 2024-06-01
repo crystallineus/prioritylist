@@ -57,6 +57,13 @@
       "when": 1717228516973,
       "tag": "0007_colorful_hammerhead",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1717234211664,
+      "tag": "0008_violet_goliath",
+      "breakpoints": true
     }
   ]
 }
