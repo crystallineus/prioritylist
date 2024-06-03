@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, Input } from "@nextui-org/react";
 
 import { api } from "~/trpc/react";
 
@@ -12,9 +13,11 @@ export function CreateNode({ parentId }: CreateNodeProps) {
   const utils = api.useUtils();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
+  const [page, setPage] = useState<"info" | "priority">("info");
   const [idx, setIdx] = useState<number | "">();
+  const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
 
-  const createNode = api.node.create.useMutation({
+  const createMutation = api.node.create.useMutation({
     async onSuccess() {
       await utils.node.listChildren.invalidate({ parentId });
       setName("");
@@ -23,43 +26,79 @@ export function CreateNode({ parentId }: CreateNodeProps) {
     },
   });
 
+  const create = () => {
+    createMutation.mutate({ name, note, parentId, idx: idx === "" ? undefined : idx })
+    onClose();
+  }
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        createNode.mutate({ name, note, parentId, idx: idx === "" ? undefined : idx });
-      }}
-      className="flex flex-col gap-2"
-    >
-      <input
-        type="text"
-        placeholder="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="w-full rounded-full px-4 py-2 text-black"
-      />
-      <input
-        type="text"
-        placeholder="Note"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        className="w-full rounded-full px-4 py-2 text-black"
-      />
-      <input
-        type="number"
-        placeholder="Priority"
-        value={idx}
-        onChange={(e) => setIdx(parseInt(e.target.value))}
-        className="w-full rounded-full px-4 py-2 text-black"
-      />
-      <button
-        type="submit"
-        className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
-        disabled={createNode.isPending}
-      >
-        {createNode.isPending ? "Creating..." : "Create Node"}
-      </button>
-    </form>
+    <>
+      <Button isIconOnly onPress={onOpen}><CreateIcon /></Button>
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+        {page === 'info' && (
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">Modal Title</ModalHeader>
+                <ModalBody>
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-full px-4 py-2 text-black"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="w-full rounded-full px-4 py-2 text-black"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Priority"
+                    value={idx}
+                    onChange={(e) => setIdx(parseInt(e.target.value))}
+                    className="w-full rounded-full px-4 py-2 text-black"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button color="danger" variant="light" onPress={onClose}>
+                    Close
+                  </Button>
+                  <Button color="primary" disabled={createMutation.isPending}
+                    onPress={create}>
+                    {createMutation.isPending ? "Creating..." : "Create Node"}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        )}
+        {page === 'priority' && (
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">Modal Title</ModalHeader>
+                <ModalBody>
+                  TODO
+                </ModalBody>
+                <ModalFooter>
+                  <Button color="danger" variant="light" onPress={onClose}>
+                    Close
+                  </Button>
+                  <Button color="primary" disabled={createMutation.isPending}
+                    onPress={create}>
+                    {createMutation.isPending ? "Creating..." : "Create Node"}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        )}
+      </Modal>
+    </>
   );
 }
 
@@ -99,4 +138,12 @@ export function CreateTestData({ parentId }: CreateNodeProps) {
       </button>
     </form>
   );
+}
+
+function CreateIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  )
 }
