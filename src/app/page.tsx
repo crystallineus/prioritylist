@@ -1,4 +1,4 @@
-import { CreateNode } from "~/app/_components/create-node";
+import { CreateNode, CreateTestData } from "~/app/_components/create-node";
 import { api } from "~/trpc/server";
 import { NodeList } from "~/app/_components/node-list";
 import { SignedIn } from "@clerk/nextjs";
@@ -36,8 +36,12 @@ async function RootNode() {
   }
 
   return (
-    <>
+    <div className="grid md:grid-cols-2 gap-6 w-full md:w-3/5">
+      <div>
+        <CreateNode parentId={root.node.id} />
+        <CreateTestData parentId={root.node.id} />
+      </div>
       <NodeList parentId={root.node.id} />
-    </>
+    </div>
   )
 }

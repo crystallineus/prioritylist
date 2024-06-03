@@ -117,7 +117,7 @@ export const nodeRouter = createTRPCRouter({
     }),
 
   listChildren: protectedProcedure
-    .input(z.object({ parentId: z.string().min(1) }))
+    .input(z.object({ parentId: z.string().min(1), limit: z.number().min(1).optional() }))
     .query(({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
         const parent = (await tx.select().from(nodes)
@@ -128,6 +128,9 @@ export const nodeRouter = createTRPCRouter({
 
         if (!parent.childrenIds || parent.childrenIds.length === 0) {
           return [];
+        }
+        if (input.limit !== undefined) {
+          parent.childrenIds = parent.childrenIds.slice(0, input.limit)
         }
         const children = await ctx.db.select().from(nodes)
           .where(and(

@@ -1,32 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { Reorder, useDragControls } from "framer-motion"
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
-import { CreateNode, CreateTestData } from "~/app/_components/create-node";
-import { Button, ButtonGroup } from "@nextui-org/button";
-import { Card, CardBody, CardHeader } from "@nextui-org/react";
+import { Button } from "@nextui-org/button";
+import { Card, CardHeader, Spacer } from "@nextui-org/react";
+import { CSSProperties, forwardRef, useMemo, useState } from "react";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, DraggableAttributes } from "@dnd-kit/core";
+import { CSS } from '@dnd-kit/utilities';
+import { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 
 type Node = RouterOutputs['node']['listChildren'][number];
 
 type NodeListProps = {
   parentId: string;
+  limit?: number;
 }
 
-export function NodeList({ parentId }: NodeListProps) {
+export function NodeList({ parentId, limit }: NodeListProps) {
+  // Hooks for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  const [activeNode, setActiveNode] = useState<Node | undefined>(undefined);
+
+  // Hooks for API calls
   const utils = api.useUtils();
-  const orderedNodesQuery = api.node.listChildren.useQuery({ parentId });
-  const updateChildren = api.node.reorderChildren.useMutation({
+  const listChildrenInput = { parentId, limit };
+  const listChildrenQuery = api.node.listChildren.useQuery(listChildrenInput);
+  const children = useMemo(() => listChildrenQuery.data ?? [], [listChildrenQuery.data]);
+  const childrenById = useMemo(() => {
+    const childrenDict: Record<string, Node> = {};
+    for (const child of children) {
+      childrenDict[child.id] = child;
+    }
+    return childrenDict;
+  }, [children]);
+  const reorderChildren = api.node.reorderChildren.useMutation({
     async onMutate(vars) {
       // Cancel outgoing fetches (so they don't overwrite our optimistic update)
-      await utils.node.listChildren.cancel();
+      await utils.node.listChildren.cancel(listChildrenInput);
 
       // Get the data from the queryCache
-      const prevData = utils.node.listChildren.getData();
+      const prevData = utils.node.listChildren.getData(listChildrenInput);
 
       // Optimistically update the data
-      utils.node.listChildren.setData({ parentId }, (prevData) => {
+      utils.node.listChildren.setData(listChildrenInput, (prevData) => {
         const children = prevData ?? [];
         const childrenDict: Record<string, Node> = {};
         for (const child of children) {
@@ -48,17 +71,35 @@ export function NodeList({ parentId }: NodeListProps) {
       // Return the previous data so we can revert if something goes wrong
       return { prevData };
     },
+    async onError(_err, _newData, context) {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      utils.node.listChildren.setData(listChildrenInput, context?.prevData);
+    },
     async onSettled() {
       // Sync with server once mutation has settled
-      await utils.node.listChildren.invalidate();
+      await utils.node.listChildren.invalidate({ parentId, limit });
     },
   });
 
-  const onReorder = (reordered: Node[]) => {
-    updateChildren.mutate({ parentId, childrenIds: reordered.map(c => c.id) })
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveNode(childrenById[event.active.id]);
   }
-  const orderedNodes = orderedNodesQuery.data ?? [];
-  const { isLoading, isError, error } = orderedNodesQuery;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over === null) {
+      return;
+    }
+    if (active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = children.map(n => n.id).indexOf(active.id.toString());
+    const newIndex = children.map(n => n.id).indexOf(over.id.toString());
+    const reordered = arrayMove(children, oldIndex, newIndex);
+    setActiveNode(undefined);
+    reorderChildren.mutate({ parentId, childrenIds: reordered.map(c => c.id) })
+  }
+  const { isLoading, isError, error } = listChildrenQuery;
 
   if (isError) {
     return <div>Error occured: {JSON.stringify(error)}</div>
@@ -67,31 +108,77 @@ export function NodeList({ parentId }: NodeListProps) {
     return <div>Loading...</div>;
   }
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <div>
-        <CreateNode parentId={parentId} />
-        <CreateTestData parentId={parentId} />
-      </div>
-      <Reorder.Group axis="y" values={orderedNodes} onReorder={onReorder}>
-        {
-          orderedNodes.length > 0 ? orderedNodes.map(node => (
-            <Item key={node.id} node={node} parentId={parentId} />
-          )) : (
-            <p>You have no lists yet.</p>
-          )
-        }
-      </Reorder.Group >
+    <div>
+      {
+        children.length === 0 ? (
+          <p>This list is empty.</p>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={children} strategy={verticalListSortingStrategy}>
+              {
+                children.map(node => (
+                  <SortableItem key={node.id} node={node} parentId={parentId} />
+                ))
+              }
+            </SortableContext>
+            <DragOverlay>
+              {activeNode ? <Item node={activeNode} parentId={parentId} /> : null}
+            </DragOverlay>
+          </DndContext>
+        )
+      }
     </div>
   )
 }
 
-type ItemProps = {
+type SortableItemProps = {
   node: Node;
   parentId: string;
 }
 
-function Item({ parentId, node }: ItemProps) {
-  const controls = useDragControls();
+function SortableItem({ parentId, node }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    isDragging,
+    transform,
+    transition,
+  } = useSortable({ id: node.id });
+  const style: CSSProperties = {
+    opacity: isDragging ? 0.5 : undefined,
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <Item setNodeRef={setNodeRef} setActivatorNodeRef={setActivatorNodeRef}
+      style={style} attributes={attributes} listeners={listeners}
+      node={node} parentId={parentId}
+    />
+  )
+}
+
+type ItemProps = {
+  parentId: string;
+  node: Node;
+  previewChildren?: boolean;
+  setPreviewChildren?: (val: boolean) => void;
+  style?: CSSProperties;
+  attributes?: DraggableAttributes;
+  listeners?: SyntheticListenerMap;
+  setNodeRef?: (node: HTMLElement | null) => void;
+  setActivatorNodeRef?: (element: HTMLElement | null) => void;
+}
+
+function Item({ parentId, node, style, attributes, listeners, setNodeRef, setActivatorNodeRef }: ItemProps) {
+  const [previewChildren, setPreviewChildren] = useState(false);
   const utils = api.useUtils();
   const deleteMutation = api.node.delete.useMutation({
     async onSuccess() {
@@ -103,21 +190,61 @@ function Item({ parentId, node }: ItemProps) {
   }
 
   return (
-    <Reorder.Item value={node} dragListener={false} dragControls={controls} className="mb-4">
-      <Card className="max-w-[400px]">
-        <CardHeader className="flex gap-3">
-          <Link href={`/node/${node.id}`}>
-            <h3 className="text-2xl font-bold">{node.name}</h3>
-            <div className="text-lg">{node.note}</div>
-          </Link>
-          <div style={{ touchAction: "none" }} onPointerDown={(e) => controls.start(e)}>Drag me</div>
-        </CardHeader>
-        <CardBody>
-          <Button onPress={() => deleteNode()}>
-            Delete
+    <div className="w-full mb-4" ref={setNodeRef} style={style}>
+      <Card>
+        <CardHeader className="flex gap-2">
+          <Button isIconOnly aria-label={previewChildren ? "Collapse" : "Expand"} onPress={() => !!setPreviewChildren && setPreviewChildren(!previewChildren)}>
+            {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
           </Button>
-        </CardBody>
+          <Link href={`/node/${node.id}`} className="grow">
+            <h3 className="text-2xl font-bold">{node.name}</h3>
+            <Spacer x={4} />
+          </Link>
+          <Button isIconOnly aria-label="Delete" onPress={() => deleteNode()}>
+            <DeleteIcon />
+          </Button>
+          <div ref={setActivatorNodeRef} {...attributes} {...listeners} style={{touchAction: "none"}}>
+            <DragHandleIcon />
+          </div>
+        </CardHeader>
       </Card>
-    </Reorder.Item>
+      <div className="ml-12 mt-4">
+        {previewChildren && (
+          <NodeList parentId={node.id} limit={5} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CollapseIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+    </svg>
+  )
+}
+
+function ExpandIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    </svg>
+  )
+}
+
+function DeleteIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+function DragHandleIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
+    </svg>
   )
 }

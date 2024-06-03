@@ -7,6 +7,8 @@
 - [Drizzle](https://orm.drizzle.team)
 - [Tailwind CSS](https://tailwindcss.com)
 - [NextUI](https://nextui.org/)
+- [Heroicons](https://heroicons.com/)
+- [dnd kit](https://dndkit.com/)
 - [tRPC](https://trpc.io)
 - [Clerk](https://clerk.com/)
 - [Vercel](https://vercel.com/)
