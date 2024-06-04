@@ -28,6 +28,7 @@ export const nodeRouter = createTRPCRouter({
           eq(nodes.id, input.id)))
     }),
 
+  // TODO: this needs to trigger a cascading delete (should probably do asynchronously)
   delete: protectedProcedure
     .input(z.object({ parentId: z.string().min(1), id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
@@ -42,6 +43,41 @@ export const nodeRouter = createTRPCRouter({
         }
         const childrenIds = parent.childrenIds?.filter(childId => childId !== input.id);
         await tx.update(nodes).set({ childrenIds }).where(eq(nodes.id, input.parentId));
+      })
+    }),
+
+  complete: protectedProcedure
+    .input(z.object({ parentId: z.string().min(1), id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        const parent = (await tx.select().from(nodes).where(eq(nodes.id, input.parentId)))[0];
+        if (parent === undefined) {
+          throw new Error(`Invalid parent ID: ${input.parentId}`)
+        }
+
+        // Get completed node
+        if (parent.completedNodeId === null) {
+          parent.completedNodeId = uuid();
+          await tx.insert(nodes).values({
+            id: parent.completedNodeId,
+            userId: ctx.auth.userId,
+            name: "Completed",
+            nodeType: "completed",
+          });
+          await tx.update(nodes).set({ completedNodeId: parent.completedNodeId}).where(eq(nodes.id, input.parentId));
+        }
+        const completedNode = (await tx.select().from(nodes).where(eq(nodes.id, parent.completedNodeId)))[0];
+        if (completedNode === undefined) {
+          throw new Error(`Failed to get node with parent.completedNodeId: ${parent.completedNodeId}`);
+        }
+
+        // Move node from parent.childrenIds to completedNode.childrenIds
+        const parentChildrenIds = parent.childrenIds?.filter(childId => childId !== input.id);
+        await tx.update(nodes).set({ childrenIds: parentChildrenIds }).where(eq(nodes.id, input.parentId));
+
+        const completedChildrenIds = completedNode.childrenIds ?? [];
+        completedChildrenIds.unshift(input.id);
+        await tx.update(nodes).set({ childrenIds: completedChildrenIds }).where(eq(nodes.id, parent.completedNodeId));
       })
     }),
 
@@ -112,7 +148,7 @@ export const nodeRouter = createTRPCRouter({
 
         const finalIds = parent.childrenIds ?? [];
         finalIds.sort((a, b) => getSortPriority(a) - getSortPriority(b));
-        await tx.update(nodes).set({childrenIds: finalIds}).where(eq(nodes.id, input.parentId));
+        await tx.update(nodes).set({ childrenIds: finalIds }).where(eq(nodes.id, input.parentId));
       })
     }),
 

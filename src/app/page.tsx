@@ -36,11 +36,9 @@ async function RootNode() {
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-6 w-full md:w-3/5">
-      <div>
-        <CreateNode parentId={root.node.id} />
-        <CreateTestData parentId={root.node.id} />
-      </div>
+    <div className="w-full md:w-2/5">
+      <CreateNode parentId={root.node.id} />
+      <CreateTestData parentId={root.node.id} />
       <NodeList parentId={root.node.id} />
     </div>
   )

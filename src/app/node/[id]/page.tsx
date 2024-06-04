@@ -15,11 +15,9 @@ export default async function Page({ params }: { params: { id: string } }) {
         <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
           <span className="text-[hsl(280,100%,70%)]">{node.name}</span>
         </h1>
-        <div className="grid md:grid-cols-2 gap-6 w-full md:w-3/5">
-          <div>
-            <CreateNode parentId={params.id} />
-            <CreateTestData parentId={params.id} />
-          </div>
+        <div className="w-full md:w-1/2">
+          <CreateNode parentId={params.id} />
+          <CreateTestData parentId={params.id} />
           <NodeList parentId={params.id} />
         </div>
       </SignedIn>

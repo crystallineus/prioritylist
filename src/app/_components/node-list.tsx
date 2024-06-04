@@ -4,12 +4,12 @@ import Link from "next/link";
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
 import { Button } from "@nextui-org/button";
-import { Card, CardHeader, Spacer } from "@nextui-org/react";
-import { CSSProperties, forwardRef, useMemo, useState } from "react";
+import { Card, CardHeader, Checkbox, Spacer, Tabs, Tab, Switch } from "@nextui-org/react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, DraggableAttributes } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, type DraggableAttributes } from "@dnd-kit/core";
 import { CSS } from '@dnd-kit/utilities';
-import { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 
 type Node = RouterOutputs['node']['listChildren'][number];
 
@@ -30,6 +30,9 @@ export function NodeList({ parentId, limit }: NodeListProps) {
 
   // Hooks for API calls
   const utils = api.useUtils();
+  const [showCompleted, setShowCompleted] = useState(false);
+  const getParentQuery = api.node.get.useQuery({ id: parentId });
+  const parent = getParentQuery?.data?.[0];
   const listChildrenInput = { parentId, limit };
   const listChildrenQuery = api.node.listChildren.useQuery(listChildrenInput);
   const children = useMemo(() => listChildrenQuery.data ?? [], [listChildrenQuery.data]);
@@ -107,9 +110,22 @@ export function NodeList({ parentId, limit }: NodeListProps) {
   if (isLoading) {
     return <div>Loading...</div>;
   }
+  console.log("parent", parent);
+
   return (
     <div>
-      {
+      {parent && !!parent.completedNodeId && parent.nodeType === "default" && (
+        <Switch
+          isSelected={showCompleted}
+          onValueChange={setShowCompleted}
+          className="mb-3"
+        >
+          <p className="text-white">Show completed</p>
+        </Switch>
+      )}
+      {parent && parent.completedNodeId !== null && showCompleted ? (
+        <NodeList parentId={parent.completedNodeId} />
+      ) : (
         children.length === 0 ? (
           <p>This list is empty.</p>
         ) : (
@@ -131,7 +147,7 @@ export function NodeList({ parentId, limit }: NodeListProps) {
             </DragOverlay>
           </DndContext>
         )
-      }
+      )}
     </div>
   )
 }
@@ -180,6 +196,8 @@ type ItemProps = {
 function Item({ parentId, node, style, attributes, listeners, setNodeRef, setActivatorNodeRef }: ItemProps) {
   const [previewChildren, setPreviewChildren] = useState(false);
   const utils = api.useUtils();
+  const getParentQuery = api.node.get.useQuery({ id: parentId });
+  const parent = getParentQuery?.data?.[0];
   const deleteMutation = api.node.delete.useMutation({
     async onSuccess() {
       await utils.node.listChildren.invalidate({ parentId });
@@ -188,14 +206,29 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, setAct
   const deleteNode = () => {
     deleteMutation.mutate({ parentId, id: node.id });
   }
+  const completeMutation = api.node.complete.useMutation({
+    async onSuccess() {
+      await utils.node.listChildren.invalidate({ parentId });
+      await utils.node.get.invalidate({ id: parentId });
+    },
+  });
+  const completeNode = () => {
+    completeMutation.mutate({ parentId, id: node.id });
+  }
+  const handleCheckboxValueChange = (isSelected: boolean) => {
+    if (!isSelected) {
+      console.log("TODO move back to original list");
+      return;
+    }
+
+    completeNode();
+  }
 
   return (
     <div className="w-full mb-4" ref={setNodeRef} style={style}>
       <Card>
         <CardHeader className="flex gap-2">
-          <Button isIconOnly aria-label={previewChildren ? "Collapse" : "Expand"} onPress={() => !!setPreviewChildren && setPreviewChildren(!previewChildren)}>
-            {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
-          </Button>
+          <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
           <Link href={`/node/${node.id}`} className="grow">
             <h3 className="text-2xl font-bold">{node.name}</h3>
             <Spacer x={4} />
@@ -203,7 +236,10 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, setAct
           <Button isIconOnly aria-label="Delete" onPress={() => deleteNode()}>
             <DeleteIcon />
           </Button>
-          <div ref={setActivatorNodeRef} {...attributes} {...listeners} style={{touchAction: "none"}}>
+          <Button isIconOnly aria-label={previewChildren ? "Collapse" : "Expand"} onPress={() => !!setPreviewChildren && setPreviewChildren(!previewChildren)}>
+            {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
+          </Button>
+          <div ref={setActivatorNodeRef} {...attributes} {...listeners} style={{ touchAction: "none" }}>
             <DragHandleIcon />
           </div>
         </CardHeader>

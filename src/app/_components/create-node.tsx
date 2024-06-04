@@ -86,6 +86,7 @@ export function CreateNode({ parentId }: CreateNodeProps) {
               <ModalHeader className="flex flex-col gap-1">Create Item</ModalHeader>
               <ModalBody>
                 <input
+                  autoFocus
                   type="text"
                   placeholder="Name"
                   value={name}
