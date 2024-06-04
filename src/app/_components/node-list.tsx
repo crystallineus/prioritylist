@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
 import { Button } from "@nextui-org/button";
-import { Card, CardHeader, Checkbox, Spacer, Tabs, Tab, Switch } from "@nextui-org/react";
+import { Card, CardHeader, Checkbox, Spacer, Switch } from "@nextui-org/react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, type DraggableAttributes } from "@dnd-kit/core";
@@ -21,7 +21,11 @@ type NodeListProps = {
 export function NodeList({ parentId, limit }: NodeListProps) {
   // Hooks for drag and drop
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: { y: 10 },
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -162,7 +166,6 @@ function SortableItem({ parentId, node }: SortableItemProps) {
     attributes,
     listeners,
     setNodeRef,
-    setActivatorNodeRef,
     isDragging,
     transform,
     transition,
@@ -170,13 +173,14 @@ function SortableItem({ parentId, node }: SortableItemProps) {
   const style: CSSProperties = {
     opacity: isDragging ? 0.5 : undefined,
     transform: CSS.Transform.toString(transform),
+    boxShadow: isDragging ? "10px 5px 5px red" : undefined,
     transition,
   };
 
   return (
-    <Item setNodeRef={setNodeRef} setActivatorNodeRef={setActivatorNodeRef}
+    <Item setNodeRef={setNodeRef}
       style={style} attributes={attributes} listeners={listeners}
-      node={node} parentId={parentId}
+      node={node} parentId={parentId} disablePreview={isDragging}
     />
   )
 }
@@ -184,17 +188,16 @@ function SortableItem({ parentId, node }: SortableItemProps) {
 type ItemProps = {
   parentId: string;
   node: Node;
-  previewChildren?: boolean;
-  setPreviewChildren?: (val: boolean) => void;
+  disablePreview?: boolean;
   style?: CSSProperties;
   attributes?: DraggableAttributes;
   listeners?: SyntheticListenerMap;
   setNodeRef?: (node: HTMLElement | null) => void;
-  setActivatorNodeRef?: (element: HTMLElement | null) => void;
 }
 
-function Item({ parentId, node, style, attributes, listeners, setNodeRef, setActivatorNodeRef }: ItemProps) {
-  const [previewChildren, setPreviewChildren] = useState(false);
+function Item({ parentId, node, style, attributes, listeners, setNodeRef, disablePreview }: ItemProps) {
+  const [previewChildrenBase, setPreviewChildren] = useState(false);
+  const previewChildren = previewChildrenBase && !disablePreview;
   const utils = api.useUtils();
   const getParentQuery = api.node.get.useQuery({ id: parentId });
   const parent = getParentQuery?.data?.[0];
@@ -225,7 +228,7 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, setAct
   }
 
   return (
-    <div className="w-full mb-4" ref={setNodeRef} style={style}>
+    <div className="w-full mb-4" ref={setNodeRef} style={{ ...style, touchAction: "none", userSelect: "none" }} {...attributes} {...listeners}>
       <Card>
         <CardHeader className="flex gap-2">
           <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
@@ -239,9 +242,6 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, setAct
           <Button isIconOnly aria-label={previewChildren ? "Collapse" : "Expand"} onPress={() => !!setPreviewChildren && setPreviewChildren(!previewChildren)}>
             {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
           </Button>
-          <div ref={setActivatorNodeRef} {...attributes} {...listeners} style={{ touchAction: "none" }}>
-            <DragHandleIcon />
-          </div>
         </CardHeader>
       </Card>
       <div className="ml-12 mt-4">
@@ -273,14 +273,6 @@ function DeleteIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-    </svg>
-  )
-}
-
-function DragHandleIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
     </svg>
   )
 }
