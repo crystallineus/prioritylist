@@ -71,6 +71,13 @@
       "when": 1717475161528,
       "tag": "0009_true_ma_gnuci",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1717540671699,
+      "tag": "0010_gifted_bloodaxe",
+      "breakpoints": true
     }
   ]
 }

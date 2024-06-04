@@ -1,0 +1,177 @@
+{
+  "id": "7e7f7d43-e753-4736-a68d-440c44edcd7f",
+  "prevId": "a6795fe1-f5db-4746-9d24-a5ad83dbaa87",
+  "version": "6",
+  "dialect": "postgresql",
+  "tables": {
+    "public.prioritylist-prototype_node": {
+      "name": "prioritylist-prototype_node",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "children_ids": {
+          "name": "children_ids",
+          "type": "varchar(64)[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY[]::varchar(64)[]"
+        },
+        "completed_node_id": {
+          "name": "completed_node_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "node_type": {
+          "name": "node_type",
+          "type": "nodeTypeEnum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'default'"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "urlPreviewImageUrl": {
+          "name": "urlPreviewImageUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "urlPreviewDescription": {
+          "name": "urlPreviewDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "nodes_by_user_id_index": {
+          "name": "nodes_by_user_id_index",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "completed_node_id_fk": {
+          "name": "completed_node_id_fk",
+          "tableFrom": "prioritylist-prototype_node",
+          "tableTo": "prioritylist-prototype_node",
+          "columnsFrom": [
+            "completed_node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.prioritylist-prototype_rootNodes": {
+      "name": "prioritylist-prototype_rootNodes",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(128)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "node_id": {
+          "name": "node_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "prioritylist-prototype_rootNodes_node_id_prioritylist-prototype_node_id_fk": {
+          "name": "prioritylist-prototype_rootNodes_node_id_prioritylist-prototype_node_id_fk",
+          "tableFrom": "prioritylist-prototype_rootNodes",
+          "tableTo": "prioritylist-prototype_node",
+          "columnsFrom": [
+            "node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "prioritylist-prototype_rootNodes_node_id_unique": {
+          "name": "prioritylist-prototype_rootNodes_node_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "node_id"
+          ]
+        }
+      }
+    }
+  },
+  "enums": {
+    "public.nodeTypeEnum": {
+      "name": "nodeTypeEnum",
+      "schema": "public",
+      "values": [
+        "default",
+        "completed"
+      ]
+    }
+  },
+  "schemas": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
