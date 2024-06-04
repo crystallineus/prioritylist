@@ -7,7 +7,7 @@ import { Button } from "@nextui-org/button";
 import { Card, CardHeader, Checkbox, Spacer, Switch } from "@nextui-org/react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, type DraggableAttributes } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, type DraggableAttributes, MouseSensor, TouchSensor } from "@dnd-kit/core";
 import { CSS } from '@dnd-kit/utilities';
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 
@@ -21,9 +21,15 @@ type NodeListProps = {
 export function NodeList({ parentId, limit }: NodeListProps) {
   // Hooks for drag and drop
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: { y: 10 },
+        distance: { y: 10},
+      }
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 500,
+        tolerance: { x: 3, y: 3 },
       },
     }),
     useSensor(KeyboardSensor, {
@@ -228,7 +234,7 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
   }
 
   return (
-    <div className="w-full mb-4" ref={setNodeRef} style={{ ...style, touchAction: "none", userSelect: "none" }} {...attributes} {...listeners}>
+    <div className="w-full mb-4" ref={setNodeRef} style={{ ...style, touchAction: "manipulation", userSelect: "none" }} {...attributes} {...listeners}>
       <Card>
         <CardHeader className="flex gap-2">
           <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
