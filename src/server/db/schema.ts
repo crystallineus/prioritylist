@@ -32,6 +32,9 @@ export const nodes = createTable(
     nodeType: nodeTypeEnum("node_type").default("default"),
     name: varchar("name", { length: 256 }).notNull(),
     note: text("note"),
+    url: text("url"),
+    urlPreviewImageUrl: text("urlPreviewImageUrl"),
+    urlPreviewDescription: text("urlPreviewDescription"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

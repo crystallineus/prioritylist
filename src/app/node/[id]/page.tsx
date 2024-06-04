@@ -17,8 +17,8 @@ export default async function Page({ params }: { params: { id: string } }) {
         </h1>
         <div className="w-full md:w-1/2">
           <CreateNode parentId={params.id} />
-          <CreateTestData parentId={params.id} />
           <NodeList parentId={params.id} />
+          <CreateTestData parentId={params.id} />
         </div>
       </SignedIn>
     </main>

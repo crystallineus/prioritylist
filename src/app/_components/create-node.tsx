@@ -1,22 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure } from "@nextui-org/react";
-
-import { RouterOutputs, api } from "~/trpc/react";
+import { useEffect, useMemo, useState } from "react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, Spinner } from "@nextui-org/react";
+import { api } from "~/trpc/react";
 
 type CreateNodeProps = {
   parentId: string;
 }
 
-type Node = RouterOutputs['node']['listChildren'][number];
-
 export function CreateNode({ parentId }: CreateNodeProps) {
   const utils = api.useUtils();
-  const [name, setName] = useState("");
+  const [nameOrUrl, setNameOrUrl] = useState("");
   const [note, setNote] = useState("");
   const [page, setPage] = useState<"info" | "priority">("info");
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure({ onClose: () => { resetModal() } });
+  const url = useMemo(() => {
+    try {
+      const url = new URL(nameOrUrl);
+      return url.href;
+    } catch (_) {
+      return "";
+    }
+  }, [nameOrUrl])
+  const getLinkPreviewQuery = api.node.getLinkPreview.useQuery({ url }, { enabled: url !== "" });
 
   const listChildrenQuery = api.node.listChildren.useQuery({ parentId });
   const nodes = listChildrenQuery.data ?? [];
@@ -26,20 +32,25 @@ export function CreateNode({ parentId }: CreateNodeProps) {
 
   const resetModal = () => {
     setPage("info");
-    setName("");
+    setNameOrUrl("");
     setNote("");
     setCount(0);
   }
   const createMutation = api.node.create.useMutation({
     async onSuccess() {
       await utils.node.listChildren.invalidate({ parentId });
-      setName("");
+      setNameOrUrl("");
       setNote("");
     },
   });
 
   const create = (idx: number) => {
-    createMutation.mutate({ name, note, parentId, idx })
+    if (!!getLinkPreviewQuery.data) {
+      const data = getLinkPreviewQuery.data;
+      createMutation.mutate({ name: data.title, url: nameOrUrl, urlPreviewDescription: data.description, urlPreviewImageUrl: data.imageUrl, note, parentId, idx })
+    } else {
+      createMutation.mutate({ name: nameOrUrl, note, parentId, idx })
+    }
     onClose();
   }
 
@@ -88,9 +99,9 @@ export function CreateNode({ parentId }: CreateNodeProps) {
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Name or URL"
+                  value={nameOrUrl}
+                  onChange={(e) => setNameOrUrl(e.target.value)}
                   className="w-full rounded-full px-4 py-2 text-black"
                 />
                 <input
@@ -100,6 +111,20 @@ export function CreateNode({ parentId }: CreateNodeProps) {
                   onChange={(e) => setNote(e.target.value)}
                   className="w-full rounded-full px-4 py-2 text-black"
                 />
+                {getLinkPreviewQuery.isLoading && <Spinner />}
+                {!!getLinkPreviewQuery.data && (
+                  <>
+                    <h2>{getLinkPreviewQuery.data.title}</h2>
+                    {!!getLinkPreviewQuery.data.description && <p>{getLinkPreviewQuery.data.description}</p>}
+                    {!!getLinkPreviewQuery.data.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        alt={`Image of ${getLinkPreviewQuery.data.title}`}
+                        src={getLinkPreviewQuery.data.imageUrl}
+                      />
+                    )}
+                  </>
+                )}
               </ModalBody>
               <ModalFooter>
                 <Button color="default" onPress={onClose}>

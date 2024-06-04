@@ -5,6 +5,12 @@ import { nodes, rootNodes } from "~/server/db/schema";
 import { v4 as uuid } from 'uuid';
 import { currentUser } from '@clerk/nextjs/server';
 import { eq, inArray, and } from "drizzle-orm";
+import { getLinkPreview } from "link-preview-js";
+import { lookup } from "node:dns";
+
+const allowedRedirectHostnames = [
+  "www.youtube.com",
+];
 
 export const nodeRouter = createTRPCRouter({
   hello: publicProcedure
@@ -17,6 +23,52 @@ export const nodeRouter = createTRPCRouter({
       return {
         greeting: `Hello ${user.firstName} ${user.lastName}`,
       };
+    }),
+
+  // TODO: probably move this to another router?
+  getLinkPreview: protectedProcedure
+    .input(z.object({ url: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const data = await getLinkPreview(input.url, {
+        timeout: 1000,
+        resolveDNSHost: async (url: string) => {
+          return new Promise((resolve, reject) => {
+            const hostname = new URL(url).hostname;
+            lookup(hostname, (err, address) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+
+              resolve(address); // if address resolves to localhost or '127.0.0.1' library will throw an error
+            });
+          });
+        },
+        followRedirects: "manual",
+        handleRedirects: (baseURL: string, forwardedURL: string) => {
+          const baseUrlObj = new URL(baseURL);
+          const forwardedURLObj = new URL(forwardedURL);
+          if (
+            forwardedURLObj.hostname === baseUrlObj.hostname ||
+            forwardedURLObj.hostname === "www." + baseUrlObj.hostname ||
+            "www." + forwardedURLObj.hostname === baseUrlObj.hostname
+          ) {
+            return true;
+          }
+          if (allowedRedirectHostnames.includes(forwardedURLObj.hostname)) {
+            return true;
+          }
+          return false;
+        },
+      });
+      if (!("title" in data)) {
+        throw new Error("Invalid")
+      }
+      return {
+        title: data.title,
+        description: data.description,
+        imageUrl: data.images.length > 0 ? data.images[0] : undefined,
+      }
     }),
 
   get: protectedProcedure
@@ -64,7 +116,7 @@ export const nodeRouter = createTRPCRouter({
             name: "Completed",
             nodeType: "completed",
           });
-          await tx.update(nodes).set({ completedNodeId: parent.completedNodeId}).where(eq(nodes.id, input.parentId));
+          await tx.update(nodes).set({ completedNodeId: parent.completedNodeId }).where(eq(nodes.id, input.parentId));
         }
         const completedNode = (await tx.select().from(nodes).where(eq(nodes.id, parent.completedNodeId)))[0];
         if (completedNode === undefined) {
@@ -82,7 +134,15 @@ export const nodeRouter = createTRPCRouter({
     }),
 
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1), note: z.string(), parentId: z.string(), idx: z.number().min(0).optional() }))
+    .input(z.object({
+      name: z.string().min(1),
+      url: z.string().min(1).optional(),
+      urlPreviewImageUrl: z.string().min(1).optional(),
+      urlPreviewDescription: z.string().min(1).optional(),
+      note: z.string(),
+      parentId: z.string(),
+      idx: z.number().min(0).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.transaction(async (tx) => {
         // Insert the child
@@ -90,8 +150,11 @@ export const nodeRouter = createTRPCRouter({
         await tx.insert(nodes).values({
           id: childId,
           userId: ctx.auth.userId,
-          name: `${input.name}`,
-          note: `${input.note}`
+          name: input.name,
+          note: input.note,
+          url: input.url,
+          urlPreviewDescription: input.urlPreviewDescription,
+          urlPreviewImageUrl: input.urlPreviewImageUrl,
         });
 
         // Update the parent if needed

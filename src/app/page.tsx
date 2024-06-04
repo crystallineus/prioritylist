@@ -38,8 +38,8 @@ async function RootNode() {
   return (
     <div className="w-full md:w-2/5">
       <CreateNode parentId={root.node.id} />
-      <CreateTestData parentId={root.node.id} />
       <NodeList parentId={root.node.id} />
+      <CreateTestData parentId={root.node.id} />
     </div>
   )
 }

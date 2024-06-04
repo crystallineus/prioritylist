@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
 import { Button } from "@nextui-org/button";
-import { Card, CardHeader, Checkbox, Spacer, Switch } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Checkbox, Spacer, Switch } from "@nextui-org/react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, type DraggableAttributes, MouseSensor, TouchSensor } from "@dnd-kit/core";
@@ -23,7 +23,7 @@ export function NodeList({ parentId, limit }: NodeListProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: { y: 10},
+        distance: { y: 10 },
       }
     }),
     useSensor(TouchSensor, {
@@ -153,7 +153,7 @@ export function NodeList({ parentId, limit }: NodeListProps) {
               }
             </SortableContext>
             <DragOverlay>
-              {activeNode ? <Item node={activeNode} parentId={parentId} /> : null}
+              {activeNode ? <Item node={activeNode} parentId={parentId} isOverlay /> : null}
             </DragOverlay>
           </DndContext>
         )
@@ -179,7 +179,6 @@ function SortableItem({ parentId, node }: SortableItemProps) {
   const style: CSSProperties = {
     opacity: isDragging ? 0.5 : undefined,
     transform: CSS.Transform.toString(transform),
-    boxShadow: isDragging ? "10px 5px 5px red" : undefined,
     transition,
   };
 
@@ -199,9 +198,10 @@ type ItemProps = {
   attributes?: DraggableAttributes;
   listeners?: SyntheticListenerMap;
   setNodeRef?: (node: HTMLElement | null) => void;
+  isOverlay?: boolean;
 }
 
-function Item({ parentId, node, style, attributes, listeners, setNodeRef, disablePreview }: ItemProps) {
+function Item({ parentId, node, style, attributes, listeners, setNodeRef, disablePreview, isOverlay }: ItemProps) {
   const [previewChildrenBase, setPreviewChildren] = useState(false);
   const previewChildren = previewChildrenBase && !disablePreview;
   const utils = api.useUtils();
@@ -234,8 +234,14 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
   }
 
   return (
-    <div className="w-full mb-4" ref={setNodeRef} style={{ ...style, touchAction: "manipulation", userSelect: "none" }} {...attributes} {...listeners}>
-      <Card>
+    <div
+      className="w-full mb-4"
+      ref={setNodeRef}
+      style={{ ...style, touchAction: "manipulation", userSelect: "none" }}
+      {...attributes}
+      {...listeners}
+    >
+      <Card style={{ boxShadow: isOverlay ? "4px 8px 16px rgba(0, 0,0, 0.5)" : undefined }}>
         <CardHeader className="flex gap-2">
           <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
           <Link href={`/node/${node.id}`} className="grow">
@@ -249,6 +255,23 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
             {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
           </Button>
         </CardHeader>
+        {!isOverlay && !disablePreview && !!node.url && (
+          <Link href={node.url}>
+            <CardBody>
+              {!!node.urlPreviewImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt={`Image of ${node.name}`}
+                  src={node.urlPreviewImageUrl}
+                />
+              ) : !!node.urlPreviewDescription ? (
+                <p>{node.urlPreviewDescription}</p> 
+              ) : (
+                <p>Open link</p>
+              )}
+            </CardBody>
+          </Link>
+        )}
       </Card>
       <div className="ml-12 mt-4">
         {previewChildren && (
