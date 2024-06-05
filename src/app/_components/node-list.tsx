@@ -130,7 +130,7 @@ export function NodeList({ parentId, limit }: NodeListProps) {
           onValueChange={setShowCompleted}
           className="mb-3"
         >
-          <p className="text-white">Show completed</p>
+          <p>Show completed</p>
         </Switch>
       )}
       {parent && parent.completedNodeId !== null && showCompleted ? (
@@ -243,7 +243,13 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
     >
       <Card style={{ boxShadow: isOverlay ? "4px 8px 16px rgba(0, 0,0, 0.5)" : undefined }}>
         <CardHeader className="flex gap-2">
-          <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
+          {node.childrenIds.length === 0 ? (
+            <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
+          ) : (
+            <Button isIconOnly aria-label={previewChildren ? "Collapse" : "Expand"} onPress={() => !!setPreviewChildren && setPreviewChildren(!previewChildren)}>
+              {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
+            </Button>
+          )}
           <Link href={`/node/${node.id}`} className="grow">
             <h3 className="text-2xl font-bold">{node.name}</h3>
             <Spacer x={4} />
@@ -251,21 +257,19 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
           <Button isIconOnly aria-label="Delete" onPress={() => deleteNode()}>
             <DeleteIcon />
           </Button>
-          <Button isIconOnly aria-label={previewChildren ? "Collapse" : "Expand"} onPress={() => !!setPreviewChildren && setPreviewChildren(!previewChildren)}>
-            {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
-          </Button>
         </CardHeader>
         {!isOverlay && !disablePreview && !!node.url && (
-          <Link href={node.url}>
-            <CardBody>
+          <Link href={node.url} target="_blank">
+            <CardBody className="flex flex-row justify-center">
               {!!node.urlPreviewImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
+                  className="max-w-md"
                   alt={`Image of ${node.name}`}
                   src={node.urlPreviewImageUrl}
                 />
               ) : !!node.urlPreviewDescription ? (
-                <p>{node.urlPreviewDescription}</p> 
+                <p>{node.urlPreviewDescription}</p>
               ) : (
                 <p>Open link</p>
               )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, Spinner } from "@nextui-org/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, Spinner, Input } from "@nextui-org/react";
 import { api } from "~/trpc/react";
 
 type CreateNodeProps = {
@@ -119,6 +119,7 @@ export function CreateNode({ parentId }: CreateNodeProps) {
                     {!!getLinkPreviewQuery.data.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
+                        className="max-w-48"
                         alt={`Image of ${getLinkPreviewQuery.data.title}`}
                         src={getLinkPreviewQuery.data.imageUrl}
                       />
@@ -178,20 +179,19 @@ export function CreateTestData({ parentId }: CreateNodeProps) {
       }}
       className="flex flex-col gap-2"
     >
-      <input
+      <Input
         type="number"
         placeholder="Priority"
-        value={num}
+        value={num.toString()}
         onChange={(e) => setNum(parseInt(e.target.value))}
-        className="w-full rounded-full px-4 py-2 text-black"
       />
-      <button
+      <Button
         type="submit"
-        className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
         disabled={createTestData.isPending}
+        className="mb-3"
       >
         {createTestData.isPending ? "Creating..." : "Add test data"}
-      </button>
+      </Button>
     </form>
   );
 }

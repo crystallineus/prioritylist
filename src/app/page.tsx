@@ -1,26 +1,16 @@
-import { CreateNode, CreateTestData } from "~/app/_components/create-node";
 import { api } from "~/trpc/server";
-import { NodeList } from "~/app/_components/node-list";
-import { SignedIn } from "@clerk/nextjs";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { NodePage } from "~/app/_components/node-page";
 
 export default async function Home() {
-  const hello = await api.node.hello();
-
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-      <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
-        <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-          <span className="text-[hsl(280,100%,70%)]">Priority</span>List
-        </h1>
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-2xl text-white">
-            {hello ? hello.greeting : "Loading..."}
-          </p>
-        </div>
-        <SignedIn>
-          <RootNode />
-        </SignedIn>
-      </div>
+    <main>
+      <SignedIn>
+        <RootNode />
+      </SignedIn>
+      <SignedOut>
+        Please log in
+      </SignedOut>
     </main>
   );
 }
@@ -36,10 +26,6 @@ async function RootNode() {
   }
 
   return (
-    <div className="w-full md:w-2/5">
-      <CreateNode parentId={root.node.id} />
-      <NodeList parentId={root.node.id} />
-      <CreateTestData parentId={root.node.id} />
-    </div>
+    <NodePage id={root.node.id} />
   )
 }

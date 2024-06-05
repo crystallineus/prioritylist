@@ -13,18 +13,6 @@ const allowedRedirectHostnames = [
 ];
 
 export const nodeRouter = createTRPCRouter({
-  hello: publicProcedure
-    .query(async () => {
-      const user = await currentUser();
-      if (!user) {
-        return { greeting: "Please register" };
-      }
-
-      return {
-        greeting: `Hello ${user.firstName} ${user.lastName}`,
-      };
-    }),
-
   // TODO: probably move this to another router?
   getLinkPreview: protectedProcedure
     .input(z.object({ url: z.string().min(1) }))
