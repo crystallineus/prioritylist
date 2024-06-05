@@ -250,7 +250,7 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
               {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
             </Button>
           )}
-          {!isOverlay && !disablePreview && !!node.url && (
+          {!!node.url && (
             <Link href={node.url} target="_blank" className="flex-grow basis-0">
               {!!node.urlPreviewImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
