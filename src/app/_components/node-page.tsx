@@ -23,7 +23,7 @@ export function NodePage({ id }: Props) {
     }
 
     return (
-        <div className="flex flex-col flex-wrap justify-center content-center text-center">
+        <div className="flex flex-col flex-wrap justify-center content-center text-center mx-4">
             <h1 className="text-5xl font-extrabold tracking-tight">
                 <span>{node.name}</span>
             </h1>

@@ -242,7 +242,7 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
       {...listeners}
     >
       <Card style={{ boxShadow: isOverlay ? "4px 8px 16px rgba(0, 0,0, 0.5)" : undefined }}>
-        <CardHeader className="flex gap-2">
+        <CardBody className="flex flex-row gap-2">
           {node.childrenIds.length === 0 ? (
             <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
           ) : (
@@ -250,21 +250,11 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
               {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
             </Button>
           )}
-          <Link href={`/node/${node.id}`} className="grow">
-            <h3 className="text-2xl font-bold">{node.name}</h3>
-            <Spacer x={4} />
-          </Link>
-          <Button isIconOnly aria-label="Delete" onPress={() => deleteNode()}>
-            <DeleteIcon />
-          </Button>
-        </CardHeader>
-        {!isOverlay && !disablePreview && !!node.url && (
-          <Link href={node.url} target="_blank">
-            <CardBody className="flex flex-row justify-center">
+          {!isOverlay && !disablePreview && !!node.url && (
+            <Link href={node.url} target="_blank" className="flex-grow basis-0">
               {!!node.urlPreviewImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  className="max-w-md"
                   alt={`Image of ${node.name}`}
                   src={node.urlPreviewImageUrl}
                 />
@@ -273,9 +263,16 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
               ) : (
                 <p>Open link</p>
               )}
-            </CardBody>
+            </Link>
+          )}
+          <Link href={`/node/${node.id}`} className="flex-grow basis-0">
+            <h3 className="text-md font-bold">{node.name}</h3>
+            <Spacer x={4} />
           </Link>
-        )}
+          <Button isIconOnly aria-label="Delete" onPress={() => deleteNode()}>
+            <DeleteIcon />
+          </Button>
+        </CardBody>
       </Card>
       <div className="ml-12 mt-4">
         {previewChildren && (
