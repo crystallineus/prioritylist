@@ -4,14 +4,14 @@ import Link from "next/link";
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
 import { Button } from "@nextui-org/button";
-import { Card, CardBody, CardHeader, Checkbox, Spacer, Switch } from "@nextui-org/react";
+import { Card, CardBody, CardHeader, Checkbox, Spacer, Spinner, Switch } from "@nextui-org/react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, type DraggableAttributes, MouseSensor, TouchSensor } from "@dnd-kit/core";
 import { CSS } from '@dnd-kit/utilities';
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 
-type Node = RouterOutputs['node']['listChildren'][number];
+type Node = RouterOutputs['node']['listChildren']["children"][number];
 
 type NodeListProps = {
   parentId: string;
@@ -43,9 +43,13 @@ export function NodeList({ parentId, limit }: NodeListProps) {
   const [showCompleted, setShowCompleted] = useState(false);
   const getParentQuery = api.node.get.useQuery({ id: parentId });
   const parent = getParentQuery?.data?.[0];
-  const listChildrenInput = { parentId, limit };
-  const listChildrenQuery = api.node.listChildren.useQuery(listChildrenInput);
-  const children = useMemo(() => listChildrenQuery.data ?? [], [listChildrenQuery.data]);
+  const listChildrenQuery = api.node.listChildren.useInfiniteQuery({ parentId, limit: 10 }, {
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  });
+  const children = useMemo(() => {
+    const pages = listChildrenQuery.data?.pages ?? [];
+    return pages.flatMap(p => p.children);
+  }, [listChildrenQuery.data?.pages]);
   const childrenById = useMemo(() => {
     const childrenDict: Record<string, Node> = {};
     for (const child of children) {
@@ -54,43 +58,9 @@ export function NodeList({ parentId, limit }: NodeListProps) {
     return childrenDict;
   }, [children]);
   const reorderChildren = api.node.reorderChildren.useMutation({
-    async onMutate(vars) {
-      // Cancel outgoing fetches (so they don't overwrite our optimistic update)
-      await utils.node.listChildren.cancel(listChildrenInput);
-
-      // Get the data from the queryCache
-      const prevData = utils.node.listChildren.getData(listChildrenInput);
-
-      // Optimistically update the data
-      utils.node.listChildren.setData(listChildrenInput, (prevData) => {
-        const children = prevData ?? [];
-        const childrenDict: Record<string, Node> = {};
-        for (const child of children) {
-          childrenDict[child.id] = child;
-        }
-
-        // Reorder the children
-        const newData = [];
-        for (const id of vars.childrenIds) {
-          const child = childrenDict[id];
-          if (!child) {
-            throw new Error(`Missing child with id: ${id}`);
-          }
-          newData.push(child)
-        }
-        return newData;
-      });
-
-      // Return the previous data so we can revert if something goes wrong
-      return { prevData };
-    },
-    async onError(_err, _newData, context) {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      utils.node.listChildren.setData(listChildrenInput, context?.prevData);
-    },
     async onSettled() {
       // Sync with server once mutation has settled
-      await utils.node.listChildren.invalidate({ parentId, limit });
+      await utils.node.listChildren.invalidate({ parentId });
     },
   });
 
@@ -120,11 +90,14 @@ export function NodeList({ parentId, limit }: NodeListProps) {
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  console.log("parent", parent);
+  if (!parent) {
+    return <div>Error loading parent</div>;
+  }
 
   return (
     <div>
-      {parent && !!parent.completedNodeId && parent.nodeType === "default" && (
+      <p>{parent.childrenIds.length} item(s)</p>
+      {!!parent.completedNodeId && parent.nodeType === "default" && (
         <Switch
           isSelected={showCompleted}
           onValueChange={setShowCompleted}
@@ -133,29 +106,39 @@ export function NodeList({ parentId, limit }: NodeListProps) {
           <p>Show completed</p>
         </Switch>
       )}
-      {parent && parent.completedNodeId !== null && showCompleted ? (
+      {parent.completedNodeId !== null && showCompleted ? (
         <NodeList parentId={parent.completedNodeId} />
       ) : (
         children.length === 0 ? (
           <p>This list is empty.</p>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={children} strategy={verticalListSortingStrategy}>
-              {
-                children.map(node => (
-                  <SortableItem key={node.id} node={node} parentId={parentId} />
-                ))
-              }
-            </SortableContext>
-            <DragOverlay>
-              {activeNode ? <Item node={activeNode} parentId={parentId} isOverlay /> : null}
-            </DragOverlay>
-          </DndContext>
+          <>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={children} strategy={verticalListSortingStrategy}>
+                {
+                  children.map(node => (
+                    <SortableItem key={node.id} node={node} parentId={parentId} />
+                  ))
+                }
+              </SortableContext>
+              <DragOverlay>
+                {activeNode ? <Item node={activeNode} parentId={parentId} isOverlay /> : null}
+              </DragOverlay>
+            </DndContext>
+            <Button
+              className="mb-4"
+              disabled={!listChildrenQuery.hasNextPage}
+              onPress={() => listChildrenQuery.fetchNextPage()}
+            >
+              Load more
+            </Button>
+            {listChildrenQuery.isFetchingNextPage && <Spinner />}
+          </>
         )
       )}
     </div>

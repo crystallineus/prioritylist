@@ -1,9 +1,8 @@
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { nodes, rootNodes } from "~/server/db/schema";
 import { v4 as uuid } from 'uuid';
-import { currentUser } from '@clerk/nextjs/server';
 import { eq, inArray, and } from "drizzle-orm";
 import { getLinkPreview } from "link-preview-js";
 import { lookup } from "node:dns";
@@ -204,7 +203,11 @@ export const nodeRouter = createTRPCRouter({
     }),
 
   listChildren: protectedProcedure
-    .input(z.object({ parentId: z.string().min(1), limit: z.number().min(1).optional() }))
+    .input(z.object({
+      parentId: z.string().min(1),
+      limit: z.number().min(1).optional(),
+      cursor: z.number().min(0).optional(),
+    }))
     .query(({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
         const parent = (await tx.select().from(nodes)
@@ -212,32 +215,38 @@ export const nodeRouter = createTRPCRouter({
         if (parent === undefined) {
           throw new Error(`Invalid parent ID: ${input.parentId}`)
         }
-
         if (!parent.childrenIds || parent.childrenIds.length === 0) {
-          return [];
+          return {
+            children: [],
+            nextCursor: undefined,
+          };
         }
-        if (input.limit !== undefined) {
-          parent.childrenIds = parent.childrenIds.slice(0, input.limit)
-        }
+
+        const limit = input.limit ?? 100;
+        const cursor = input.cursor ?? 0;
+        const nextCursor = cursor + limit;
+        const childrenIds = parent.childrenIds.slice(cursor, nextCursor);
         const children = await ctx.db.select().from(nodes)
           .where(and(
-            inArray(nodes.id, parent.childrenIds),
+            inArray(nodes.id, childrenIds),
             eq(nodes.userId, ctx.auth.userId)
           ));
         const childrenDict: Record<string, typeof children[number]> = {};
         for (const child of children) {
           childrenDict[child.id] = child;
         }
-
-        const sorted = [];
-        for (const id of parent.childrenIds) {
+        // Sort children in the order specified by childrenIds
+        const sorted = childrenIds.map(id => {
           const child = childrenDict[id];
           if (!child) {
             throw new Error(`Missing child with id: ${id}`);
           }
-          sorted.push(child)
-        }
-        return sorted;
+          return child;
+        });
+        return {
+          children: sorted,
+          nextCursor: parent.childrenIds.length > nextCursor ? nextCursor : undefined,
+        };
       })
     }),
 
