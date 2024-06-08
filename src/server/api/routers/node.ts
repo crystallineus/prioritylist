@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { eq, inArray, and } from "drizzle-orm";
 import { getLinkPreview } from "link-preview-js";
 import { lookup } from "node:dns";
+import { currentUser } from "@clerk/nextjs/server";
 
 const allowedRedirectHostnames = [
   "www.youtube.com",
@@ -252,12 +253,17 @@ export const nodeRouter = createTRPCRouter({
 
   createRootNode: protectedProcedure
     .mutation(async ({ ctx }) => {
+      const user = await currentUser();
+      if (!user) {
+        throw new Error("No user");
+      }
+
       await ctx.db.transaction(async (tx) => {
         const nodeId = uuid();
         await tx.insert(nodes).values({
           id: nodeId,
           userId: ctx.auth.userId,
-          name: "Root",
+          name: `${user.firstName} ${user.lastName}`,
         });
         await tx.insert(rootNodes).values({
           userId: ctx.auth.userId,
