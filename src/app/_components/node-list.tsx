@@ -1,24 +1,27 @@
 "use client";
 
-import Link from "next/link";
-import { type RouterOutputs } from "~/trpc/react";
-import { api } from "~/trpc/react";
-import { Button } from "@nextui-org/button";
-import { Card, CardBody, CardHeader, Checkbox, Spacer, Spinner, Switch } from "@nextui-org/react";
-import { type CSSProperties, useMemo, useState } from "react";
-import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, DragOverlay, type DraggableAttributes, MouseSensor, TouchSensor } from "@dnd-kit/core";
-import { CSS } from '@dnd-kit/utilities';
+import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type DragStartEvent, type DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Button } from "@nextui-org/button";
+import { Card, CardBody, Checkbox, Spacer, Spinner, Switch } from "@nextui-org/react";
+import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { api, type RouterOutputs } from "~/trpc/react";
+
 
 type Node = RouterOutputs['node']['listChildren']["children"][number];
 
 type NodeListProps = {
   parentId: string;
-  limit?: number;
 }
 
-export function NodeList({ parentId, limit }: NodeListProps) {
+const imageNodeHeightPx = 192;
+const textNodeHeightPx = 64;
+
+export function NodeList({ parentId }: NodeListProps) {
   // Hooks for drag and drop
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -43,7 +46,7 @@ export function NodeList({ parentId, limit }: NodeListProps) {
   const [showCompleted, setShowCompleted] = useState(false);
   const getParentQuery = api.node.get.useQuery({ id: parentId });
   const parent = getParentQuery?.data?.[0];
-  const listChildrenQuery = api.node.listChildren.useInfiniteQuery({ parentId, limit: 10 }, {
+  const listChildrenQuery = api.node.listChildren.useInfiniteQuery({ parentId, limit: 100 }, {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
   const children = useMemo(() => {
@@ -63,6 +66,46 @@ export function NodeList({ parentId, limit }: NodeListProps) {
       await utils.node.listChildren.invalidate({ parentId });
     },
   });
+  const scrollRef = useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: listChildrenQuery.hasNextPage ? children.length + 1 : children.length,
+    estimateSize: (index) => 16 + (!!children[index]?.urlPreviewImageUrl ? imageNodeHeightPx : textNodeHeightPx ),
+    getScrollElement: () => scrollRef.current ?? null,
+    getItemKey: (index) => {
+      const child = children[index];
+      if (!child) {
+        return "loader";
+      }
+      return child.id;
+    },
+    rangeExtractor: (range) => {
+      // The active node may already be in the default range, so dedupe
+      const uniqueIndexes = new Set(defaultRangeExtractor(range));
+      if (!!activeNode) {
+        uniqueIndexes.add(children.map(c => c.id).indexOf(activeNode.id));
+      }
+      return [...uniqueIndexes];
+    },
+    overscan: 5,
+  })
+  useEffect(() => {
+    const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse()
+    if (!lastItem) {
+      return
+    }
+
+    if (
+      lastItem.index >= children.length - 1 &&
+      listChildrenQuery.hasNextPage &&
+      !listChildrenQuery.isFetchingNextPage
+    ) {
+      void listChildrenQuery.fetchNextPage()
+    }
+  }, [
+    listChildrenQuery,
+    rowVirtualizer,
+    children.length,
+  ])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveNode(childrenById[event.active.id]);
@@ -120,24 +163,45 @@ export function NodeList({ parentId, limit }: NodeListProps) {
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={children} strategy={verticalListSortingStrategy}>
-                {
-                  children.map(node => (
-                    <SortableItem key={node.id} node={node} parentId={parentId} />
-                  ))
-                }
+                <div
+                  ref={scrollRef}
+                  style={{height: "50vh"}}
+                  className="overflow-auto w-full p-6"
+                >
+                  <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
+                    {
+                      rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const isLoaderRow = virtualRow.index > children.length - 1;
+                        const node = children[virtualRow.index];
+                        if (!isLoaderRow && !node) {
+                          throw new Error(`Virtual row invalid children index: ${virtualRow.index}`);
+                        }
+
+                        return (
+                          <div
+                            key={virtualRow.key} data-index={virtualRow.index} ref={rowVirtualizer.measureElement}
+                            style={{
+                              height: `${virtualRow.size}px`,
+                              transform: `translateY(${virtualRow.start}px)`,
+                            }}
+                            className="absolute top-0 left-0 w-full"
+                          >
+                            {isLoaderRow ? (
+                              <Spinner />
+                            ) : (
+                              <SortableItem node={node!} parent={parent} />
+                            )}
+                          </div>
+                        );
+                      })
+                    }
+                  </div>
+                </div>
               </SortableContext>
               <DragOverlay>
-                {activeNode ? <Item node={activeNode} parentId={parentId} isOverlay /> : null}
+                {activeNode ? <Item node={activeNode} parent={parent} isOverlay /> : null}
               </DragOverlay>
             </DndContext>
-            <Button
-              className="mb-4"
-              disabled={!listChildrenQuery.hasNextPage}
-              onPress={() => listChildrenQuery.fetchNextPage()}
-            >
-              Load more
-            </Button>
-            {listChildrenQuery.isFetchingNextPage && <Spinner />}
           </>
         )
       )}
@@ -147,10 +211,10 @@ export function NodeList({ parentId, limit }: NodeListProps) {
 
 type SortableItemProps = {
   node: Node;
-  parentId: string;
+  parent: Node;
 }
 
-function SortableItem({ parentId, node }: SortableItemProps) {
+function SortableItem({ parent, node }: SortableItemProps) {
   const {
     attributes,
     listeners,
@@ -168,13 +232,13 @@ function SortableItem({ parentId, node }: SortableItemProps) {
   return (
     <Item setNodeRef={setNodeRef}
       style={style} attributes={attributes} listeners={listeners}
-      node={node} parentId={parentId} disablePreview={isDragging}
+      node={node} parent={parent} disablePreview={isDragging}
     />
   )
 }
 
 type ItemProps = {
-  parentId: string;
+  parent: Node;
   node: Node;
   disablePreview?: boolean;
   style?: CSSProperties;
@@ -184,28 +248,26 @@ type ItemProps = {
   isOverlay?: boolean;
 }
 
-function Item({ parentId, node, style, attributes, listeners, setNodeRef, disablePreview, isOverlay }: ItemProps) {
+function Item({ parent, node, style, attributes, listeners, setNodeRef, disablePreview, isOverlay }: ItemProps) {
   const [previewChildrenBase, setPreviewChildren] = useState(false);
   const previewChildren = previewChildrenBase && !disablePreview;
   const utils = api.useUtils();
-  const getParentQuery = api.node.get.useQuery({ id: parentId });
-  const parent = getParentQuery?.data?.[0];
   const deleteMutation = api.node.delete.useMutation({
     async onSuccess() {
-      await utils.node.listChildren.invalidate({ parentId });
+      await utils.node.listChildren.invalidate({ parentId: parent.id });
     },
   });
   const deleteNode = () => {
-    deleteMutation.mutate({ parentId, id: node.id });
+    deleteMutation.mutate({ parentId: parent.id, id: node.id });
   }
   const completeMutation = api.node.complete.useMutation({
     async onSuccess() {
-      await utils.node.listChildren.invalidate({ parentId });
-      await utils.node.get.invalidate({ id: parentId });
+      await utils.node.listChildren.invalidate({ parentId: parent.id });
+      await utils.node.get.invalidate({ id: parent.id });
     },
   });
   const completeNode = () => {
-    completeMutation.mutate({ parentId, id: node.id });
+    completeMutation.mutate({ parentId: parent.id, id: node.id });
   }
   const handleCheckboxValueChange = (isSelected: boolean) => {
     if (!isSelected) {
@@ -224,7 +286,7 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
       {...attributes}
       {...listeners}
     >
-      <Card style={{ boxShadow: isOverlay ? "4px 8px 16px rgba(0, 0,0, 0.5)" : undefined }}>
+      <Card style={{ boxShadow: isOverlay ? "4px 8px 16px rgba(0, 0,0, 0.5)" : undefined, height: !!node.urlPreviewImageUrl ? imageNodeHeightPx : textNodeHeightPx }}>
         <CardBody className="flex flex-row gap-2">
           {node.childrenIds.length === 0 ? (
             <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
@@ -238,6 +300,7 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
               {!!node.urlPreviewImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
+                  style={{ maxHeight: 156 }}
                   alt={`Image of ${node.name}`}
                   src={node.urlPreviewImageUrl}
                 />
@@ -259,7 +322,7 @@ function Item({ parentId, node, style, attributes, listeners, setNodeRef, disabl
       </Card>
       <div className="ml-12 mt-4">
         {previewChildren && (
-          <NodeList parentId={node.id} limit={5} />
+          <NodeList parentId={node.id} />
         )}
       </div>
     </div>

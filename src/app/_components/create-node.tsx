@@ -166,6 +166,7 @@ export function CreateTestData({ parentId }: CreateNodeProps) {
   const createTestData = api.node.create.useMutation({
     async onSuccess() {
       await utils.node.listChildren.invalidate({ parentId });
+      await utils.node.get.invalidate({ id: parentId });
     },
   });
 
