@@ -6,7 +6,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from "@nextui-org/button";
 import { Card, CardBody, Checkbox, Spacer, Spinner, Switch } from "@nextui-org/react";
-import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
+import { defaultRangeExtractor, useWindowVirtualizer } from '@tanstack/react-virtual';
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -43,7 +43,6 @@ export function NodeList({ parentId }: NodeListProps) {
 
   // Hooks for API calls
   const utils = api.useUtils();
-  const [showCompleted, setShowCompleted] = useState(false);
   const getParentQuery = api.node.get.useQuery({ id: parentId });
   const parent = getParentQuery?.data?.[0];
   const listChildrenQuery = api.node.listChildren.useInfiniteQuery({ parentId, limit: 100 }, {
@@ -66,11 +65,9 @@ export function NodeList({ parentId }: NodeListProps) {
       await utils.node.listChildren.invalidate({ parentId });
     },
   });
-  const scrollRef = useRef(null);
-  const rowVirtualizer = useVirtualizer({
+  const rowVirtualizer = useWindowVirtualizer({
     count: listChildrenQuery.hasNextPage ? children.length + 1 : children.length,
-    estimateSize: (index) => 16 + (!!children[index]?.urlPreviewImageUrl ? imageNodeHeightPx : textNodeHeightPx ),
-    getScrollElement: () => scrollRef.current ?? null,
+    estimateSize: (index) => 16 + (!!children[index]?.urlPreviewImageUrl ? imageNodeHeightPx : textNodeHeightPx),
     getItemKey: (index) => {
       const child = children[index];
       if (!child) {
@@ -138,74 +135,46 @@ export function NodeList({ parentId }: NodeListProps) {
   }
 
   return (
-    <div>
-      <p>{parent.childrenIds.length} item(s)</p>
-      {!!parent.completedNodeId && parent.nodeType === "default" && (
-        <Switch
-          isSelected={showCompleted}
-          onValueChange={setShowCompleted}
-          className="mb-3"
-        >
-          <p>Show completed</p>
-        </Switch>
-      )}
-      {parent.completedNodeId !== null && showCompleted ? (
-        <NodeList parentId={parent.completedNodeId} />
-      ) : (
-        children.length === 0 ? (
-          <p>This list is empty.</p>
-        ) : (
-          <>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={children} strategy={verticalListSortingStrategy}>
-                <div
-                  ref={scrollRef}
-                  style={{height: "50vh"}}
-                  className="overflow-auto w-full p-6"
-                >
-                  <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
-                    {
-                      rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                        const isLoaderRow = virtualRow.index > children.length - 1;
-                        const node = children[virtualRow.index];
-                        if (!isLoaderRow && !node) {
-                          throw new Error(`Virtual row invalid children index: ${virtualRow.index}`);
-                        }
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={children} strategy={verticalListSortingStrategy}>
+        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
+          {
+            rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const isLoaderRow = virtualRow.index > children.length - 1;
+              const node = children[virtualRow.index];
+              if (!isLoaderRow && !node) {
+                throw new Error(`Virtual row invalid children index: ${virtualRow.index}`);
+              }
 
-                        return (
-                          <div
-                            key={virtualRow.key} data-index={virtualRow.index} ref={rowVirtualizer.measureElement}
-                            style={{
-                              height: `${virtualRow.size}px`,
-                              transform: `translateY(${virtualRow.start}px)`,
-                            }}
-                            className="absolute top-0 left-0 w-full"
-                          >
-                            {isLoaderRow ? (
-                              <Spinner />
-                            ) : (
-                              <SortableItem node={node!} parent={parent} />
-                            )}
-                          </div>
-                        );
-                      })
-                    }
-                  </div>
+              return (
+                <div
+                  key={virtualRow.key} data-index={virtualRow.index} ref={rowVirtualizer.measureElement}
+                  style={{
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  className="absolute top-0 left-0 w-full"
+                >
+                  {isLoaderRow ? (
+                    <Spinner />
+                  ) : (
+                    <SortableItem node={node!} parent={parent} />
+                  )}
                 </div>
-              </SortableContext>
-              <DragOverlay>
-                {activeNode ? <Item node={activeNode} parent={parent} isOverlay /> : null}
-              </DragOverlay>
-            </DndContext>
-          </>
-        )
-      )}
-    </div>
+              );
+            })
+          }
+        </div>
+      </SortableContext>
+      <DragOverlay>
+        {activeNode ? <Item node={activeNode} parent={parent} isOverlay /> : null}
+      </DragOverlay>
+    </DndContext>
   )
 }
 
@@ -232,7 +201,7 @@ function SortableItem({ parent, node }: SortableItemProps) {
   return (
     <Item setNodeRef={setNodeRef}
       style={style} attributes={attributes} listeners={listeners}
-      node={node} parent={parent} disablePreview={isDragging}
+      node={node} parent={parent}
     />
   )
 }
@@ -240,7 +209,6 @@ function SortableItem({ parent, node }: SortableItemProps) {
 type ItemProps = {
   parent: Node;
   node: Node;
-  disablePreview?: boolean;
   style?: CSSProperties;
   attributes?: DraggableAttributes;
   listeners?: SyntheticListenerMap;
@@ -248,9 +216,7 @@ type ItemProps = {
   isOverlay?: boolean;
 }
 
-function Item({ parent, node, style, attributes, listeners, setNodeRef, disablePreview, isOverlay }: ItemProps) {
-  const [previewChildrenBase, setPreviewChildren] = useState(false);
-  const previewChildren = previewChildrenBase && !disablePreview;
+function Item({ parent, node, style, attributes, listeners, setNodeRef, isOverlay }: ItemProps) {
   const utils = api.useUtils();
   const deleteMutation = api.node.delete.useMutation({
     async onSuccess() {
@@ -291,9 +257,7 @@ function Item({ parent, node, style, attributes, listeners, setNodeRef, disableP
           {node.childrenIds.length === 0 ? (
             <Checkbox isSelected={parent?.nodeType === "completed"} onValueChange={handleCheckboxValueChange} />
           ) : (
-            <Button isIconOnly aria-label={previewChildren ? "Collapse" : "Expand"} onPress={() => !!setPreviewChildren && setPreviewChildren(!previewChildren)}>
-              {previewChildren ? <CollapseIcon /> : <ExpandIcon />}
-            </Button>
+            <ListIcon />
           )}
           {!!node.url && (
             <Link href={node.url} target="_blank" className="flex-grow basis-0">
@@ -320,27 +284,14 @@ function Item({ parent, node, style, attributes, listeners, setNodeRef, disableP
           </Button>
         </CardBody>
       </Card>
-      <div className="ml-12 mt-4">
-        {previewChildren && (
-          <NodeList parentId={node.id} />
-        )}
-      </div>
     </div>
   )
 }
 
-function CollapseIcon() {
+export function ListIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-    </svg>
-  )
-}
-
-function ExpandIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
     </svg>
   )
 }

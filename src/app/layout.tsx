@@ -4,7 +4,8 @@ import { GeistSans } from "geist/font/sans";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { NextUIProvider } from "@nextui-org/react";
+import { Link, Navbar, NavbarContent, NavbarItem, NextUIProvider } from "@nextui-org/react";
+import { ScrollToTopButton } from "~/app/_components/scroll-top-button";
 
 export const metadata = {
   title: "Create T3 App",
@@ -21,14 +22,24 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className={`${GeistSans.variable}`}>
         <body>
-          <header>
-            <SignedOut>
-              <SignInButton />
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </header>
+          <Navbar shouldHideOnScroll>
+            <NavbarContent>
+              <NavbarItem>
+                <Link color="foreground" href="/">
+                  <p className="text-lg font-semibold">Home</p>
+                </Link>
+              </NavbarItem>
+            </NavbarContent>
+            <NavbarContent justify="end">
+              <ScrollToTopButton />
+              <SignedOut>
+                <SignInButton />
+              </SignedOut>
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
+            </NavbarContent >
+          </Navbar>
           <NextUIProvider>
             <TRPCReactProvider>
               {children}
@@ -39,3 +50,4 @@ export default function RootLayout({
     </ClerkProvider>
   );
 }
+

@@ -24,8 +24,8 @@ export function CreateNode({ parentId }: CreateNodeProps) {
   }, [nameOrUrl])
   const getLinkPreviewQuery = api.node.getLinkPreview.useQuery({ url }, { enabled: url !== "" });
 
-  const listChildrenQuery = api.node.listChildren.useQuery({ parentId });
-  const nodes = listChildrenQuery.data ?? [];
+  const listChildrenQuery = api.node.listChildren.useQuery({ parentId, limit: 1000 });
+  const nodes = listChildrenQuery.data?.children ?? [];
   const [left, setLeft] = useState(0);
   const [right, setRight] = useState(0);
   const [count, setCount] = useState(0);
