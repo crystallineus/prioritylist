@@ -143,14 +143,25 @@ export function CreateNode({ parentId }: CreateNodeProps) {
               <ModalBody>
                 {midNode?.name ?? "The node is going to be the first priority."}
               </ModalBody>
-              <ModalFooter>
-                <Button onPress={handleLower}>
-                  Lower
-                </Button>
-                <Button onPress={handleHigher}>
-                  Higher
-                </Button>
-              </ModalFooter>
+              {
+                nodes.length > 0 && (
+                  <ModalFooter>
+                    <Button onPress={handleLower}>
+                      Lower
+                    </Button>
+                    <Button onPress={handleHigher}>
+                      Higher
+                    </Button>
+                  </ModalFooter>
+                ) || <ModalFooter>
+                      <Button onPress={onClose}>
+                        Close
+                      </Button>
+                      <Button onPress={() => { create(0); }}>
+                        Create
+                      </Button>
+                    </ModalFooter>
+              }
             </>
           )}
         </ModalContent>
