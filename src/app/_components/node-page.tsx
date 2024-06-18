@@ -27,7 +27,7 @@ export function NodePage({ id }: Props) {
 
     return (
         <div className="flex flex-col flex-wrap justify-center content-center text-center mx-4 mt-8">
-            <div className="flex flex-row">
+            <div className="flex flex-row w-full max-w-[1024px]">
                 <div className="flex flex-col text-left mb-4">
                     {!!node.url && (
                         <Link href={node.url} target="_blank" className="flex-grow basis-0">
@@ -45,7 +45,6 @@ export function NodePage({ id }: Props) {
                     )}
                 </div>
                 <div className="flex flex-col text-left mb-4 ml-4">
-
                     <h1 className="text-3xl font-bold tracking-tight">
                         <span>{node.name}</span>
                     </h1>
@@ -53,11 +52,11 @@ export function NodePage({ id }: Props) {
                     <p className="text-black-500">{node.note ?? ""}</p>
                 </div>
             </div>
-            <div className="flex flex-row gap-3">
+            <div className="flex flex-row ml-auto gap-3">
                 <p>
                     {node.childrenIds.length > 0 && <p>{node.childrenIds.length} item(s)</p>}
                 </p>
-                <div className="flex ml-auto text-left gap-3 mb-4">
+                <div className="flex text-left gap-3 mb-4">
                     <CreateNode parentId={id} />
                     <Popover showArrow={true}>
                         <PopoverTrigger>
