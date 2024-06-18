@@ -1,6 +1,6 @@
 "use client";
 
-import { Spinner, Switch } from "@nextui-org/react";
+import { Link, Spinner, Switch } from "@nextui-org/react";
 import { useState } from "react";
 import { CreateNode, CreateTestData } from "~/app/_components/create-node";
 import { NodeList } from "~/app/_components/node-list";
@@ -29,12 +29,35 @@ export function NodePage({ id }: Props) {
         <div className="flex flex-col flex-wrap justify-center content-center text-center mx-4 mt-8">
             <div className="flex flex-row">
                 <div className="flex flex-col text-left mb-4">
+                    {!!node.url && (
+                        <Link href={node.url} target="_blank" className="flex-grow basis-0">
+                            {!!node.urlPreviewImageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    style={{ maxHeight: 156 }}
+                                    alt={`Image of ${node.name}`}
+                                    src={node.urlPreviewImageUrl}
+                                />
+                            ) : (
+                                <p>Open link</p>
+                            )}
+                        </Link>
+                    )}
+                </div>
+                <div className="flex flex-col text-left mb-4 ml-4">
+
                     <h1 className="text-3xl font-bold tracking-tight">
                         <span>{node.name}</span>
                     </h1>
-                    {node.childrenIds.length > 0 && <p>{node.childrenIds.length} item(s)</p>}
+                    <p className="text-gray-500">{node.urlPreviewDescription ?? ""}</p>
+                    <p className="text-black-500">{node.note ?? ""}</p>
                 </div>
-                <div className="ml-auto flex flex-row gap-3">
+            </div>
+            <div className="flex flex-row gap-3">
+                <p>
+                    {node.childrenIds.length > 0 && <p>{node.childrenIds.length} item(s)</p>}
+                </p>
+                <div className="flex ml-auto text-left gap-3 mb-4">
                     <CreateNode parentId={id} />
                     <Popover showArrow={true}>
                         <PopoverTrigger>
@@ -56,7 +79,7 @@ export function NodePage({ id }: Props) {
                 </div>
             </div>
             <div className="w-full max-w-[1024px]">
-                {showCompleted && node.completedNodeId ? <NodeList parentId={node.completedNodeId}/> : <NodeList parentId={id} />}
+                {showCompleted && node.completedNodeId ? <NodeList parentId={node.completedNodeId} /> : <NodeList parentId={id} />}
             </div>
         </div>
     )
