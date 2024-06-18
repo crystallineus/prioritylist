@@ -13,6 +13,8 @@ export function CreateNode({ parentId }: CreateNodeProps) {
   const [nameOrUrl, setNameOrUrl] = useState("");
   const [note, setNote] = useState("");
   const [page, setPage] = useState<"info" | "priority">("info");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure({ onClose: () => { resetModal() } });
   const url = useMemo(() => {
     try {
@@ -23,6 +25,13 @@ export function CreateNode({ parentId }: CreateNodeProps) {
     }
   }, [nameOrUrl])
   const getLinkPreviewQuery = api.node.getLinkPreview.useQuery({ url }, { enabled: url !== "" });
+
+  useEffect(() => {
+    if (getLinkPreviewQuery.data) {
+      setTitle(getLinkPreviewQuery.data.title || "");
+      setDescription(getLinkPreviewQuery.data.description ?? "");
+    }
+  }, [getLinkPreviewQuery.data]);
 
   const listChildrenQuery = api.node.listChildren.useQuery({ parentId, limit: 1000 });
   const nodes = listChildrenQuery.data?.children ?? [];
@@ -35,6 +44,8 @@ export function CreateNode({ parentId }: CreateNodeProps) {
     setNameOrUrl("");
     setNote("");
     setCount(0);
+    setTitle("");
+    setDescription("");
   }
   const createMutation = api.node.create.useMutation({
     async onSuccess() {
@@ -47,7 +58,7 @@ export function CreateNode({ parentId }: CreateNodeProps) {
   const create = (idx: number) => {
     if (!!getLinkPreviewQuery.data) {
       const data = getLinkPreviewQuery.data;
-      createMutation.mutate({ name: data.title, url: nameOrUrl, urlPreviewDescription: data.description, urlPreviewImageUrl: data.imageUrl, note, parentId, idx })
+      createMutation.mutate({ name: title, url: nameOrUrl, urlPreviewDescription: description, urlPreviewImageUrl: data.imageUrl, note, parentId, idx })
     } else {
       createMutation.mutate({ name: nameOrUrl, note, parentId, idx })
     }
@@ -114,8 +125,24 @@ export function CreateNode({ parentId }: CreateNodeProps) {
                 {getLinkPreviewQuery.isLoading && <Spinner />}
                 {!!getLinkPreviewQuery.data && (
                   <>
-                    <h2>{getLinkPreviewQuery.data.title}</h2>
-                    {!!getLinkPreviewQuery.data.description && <p>{getLinkPreviewQuery.data.description}</p>}
+                    <h2>
+                      <input
+                        type="text"
+                        placeholder="Title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full rounded-full px-4 py-2 text-black"
+                      />
+                    </h2>
+                    {!!getLinkPreviewQuery.data.description &&
+                      <input
+                        type="text"
+                        placeholder="Description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="w-full rounded-full px-4 py-2 text-black"
+                      />
+                    }
                     {!!getLinkPreviewQuery.data.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -154,13 +181,13 @@ export function CreateNode({ parentId }: CreateNodeProps) {
                     </Button>
                   </ModalFooter>
                 ) || <ModalFooter>
-                      <Button onPress={onClose}>
-                        Close
-                      </Button>
-                      <Button onPress={() => { create(0); }}>
-                        Create
-                      </Button>
-                    </ModalFooter>
+                  <Button onPress={onClose}>
+                    Close
+                  </Button>
+                  <Button onPress={() => { create(0); }}>
+                    Create
+                  </Button>
+                </ModalFooter>
               }
             </>
           )}
