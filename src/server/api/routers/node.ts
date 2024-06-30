@@ -167,6 +167,30 @@ export const nodeRouter = createTRPCRouter({
       })
     }),
 
+  update: protectedProcedure
+    .input(z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      url: z.string().min(1).optional(),
+      urlPreviewImageUrl: z.string().min(1).optional(),
+      urlPreviewDescription: z.string().min(1).optional(),
+      note: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx.update(nodes).set({
+          name: input.name,
+          url: input.url,
+          urlPreviewImageUrl: input.urlPreviewImageUrl,
+          urlPreviewDescription: input.urlPreviewDescription,
+          note: input.note,
+        }).where(and(
+          eq(nodes.id, input.id),
+          eq(nodes.userId, ctx.auth.userId)
+        ));
+      })
+    }),
+  
   // reorderChildren re-sorts parent.childrenIds using input.childrenIds.
   // This method NEVER adds new IDs or removes IDs from parent.childrenIds.
   reorderChildren: protectedProcedure

@@ -6,6 +6,7 @@ import { CreateNode, CreateTestData } from "~/app/_components/create-node";
 import { NodeList } from "~/app/_components/node-list";
 import { api } from "~/trpc/react";
 import { Popover, PopoverTrigger, PopoverContent, Button } from "@nextui-org/react";
+import { UpdateNode } from "~/app/_components/edit-node";
 
 type Props = {
     id: string;
@@ -15,6 +16,7 @@ export function NodePage({ id }: Props) {
     const getQuery = api.node.get.useQuery({ id });
     const [showCompleted, setShowCompleted] = useState(false);
     const node = getQuery?.data?.[0];
+    
     if (getQuery.isError) {
         return <div>Error</div>
     }
@@ -50,6 +52,9 @@ export function NodePage({ id }: Props) {
                     </h1>
                     <p className="text-gray-500">{node.urlPreviewDescription ?? ""}</p>
                     <p className="text-black-500">{node.note ?? ""}</p>
+                </div>
+                <div className="flex flex-col ml-auto gap-3">
+                    <UpdateNode node={node}/>
                 </div>
             </div>
             <div className="flex flex-row ml-auto gap-3">
@@ -88,5 +93,4 @@ function EllipsisIcon() {
     return <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
     </svg>
-
 }
